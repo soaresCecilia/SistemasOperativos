@@ -6,6 +6,7 @@
 #include <string.h>
 
 #define tamArt 16
+#define tamStocks 16
 #define formatoStocks "%7d %7d\n"
 #define formatoVendas "%7d %7d %7.2f\n"
 
@@ -52,6 +53,10 @@ int insereStock(char*codigo, char*quantidade){
 	char stocks[100];
 
 	fdStocks = open("stocks.txt", O_WRONLY | O_APPEND);
+	if(fdStocks<0){
+	 perror("Erron a abrrir ficheiro stocks.txt");
+	 _exit(errno);
+	}
 
 	codigoInt = atoi(codigo);
 	quantidadeInt= atoi(quantidade);
@@ -68,8 +73,62 @@ int insereStock(char*codigo, char*quantidade){
 
   	bytesEscritos=write(fdStocks,stocks,qtos);
 
+
+  	close(fdStocks);
+
   	return bytesEscritos;
 }
+
+int actualizaStock(char* codigo, char* quantidade ){
+	int fdStocks,quantidadeArtInt, quantidadeInt,codigoInt, bytesLidos, sinal;
+	int flag=0;
+	char buffer[2048];
+	char codigoArt[100], quantidadeArt[100];
+	char c =*quantidade;
+
+	if((c=='-')){
+		 sinal=-1;
+	} 
+	else{
+		sinal=1;
+	}
+
+
+	fdStocks=open("stocks.txt",O_RDWR);
+
+	if(fdStocks<0){
+	 perror("Erron a abrrir ficheiro stocks.txt");
+	 _exit(errno);
+	}
+
+	if (lseek(fdStocks,0,SEEK_SET)<0){
+		perror("erro no lseek");
+		_exit(errno);
+	}
+
+	while((bytesLidos=readline(fdStocks,buffer,tamStocks))>0) {
+		sscanf(buffer,"%s %s",codigoArt, quantidadeArt);
+
+		if(strcmp(codigo,codigoArt)==0){
+			buffer[0]=0;
+			codigoInt= atoi(codigo);
+			quantidadeInt = atoi(quantidade);
+			quantidadeArtInt = atoi(quantidadeArt);
+			quantidadeArtInt += (quantidadeInt*sinal);
+
+			sprintf(buffer,formatoStocks, codigoInt,quantidadeArtInt);
+			flag= 1;
+		}
+	}	
+
+	if(flag==0) insereStock( codigo,quantidade);
+
+	close(fdStocks);
+
+	return 0;
+
+}
+
 
 int insereVenda(char*codigo, char*quantidade){
 
@@ -81,10 +140,20 @@ int insereVenda(char*codigo, char*quantidade){
 
 	fdVendas = open("vendas.txt", O_WRONLY | O_APPEND);
 
+	if(fdVendas<0){
+	 perror("Erron a abrrir ficheiro vendas.txt");
+	 _exit(errno);
+	}
+
 	codigoInt = atoi(codigo);
 	quantidadeInt = abs(atoi(quantidade));
 
 	fdArtigos =open("artigos.txt",O_RDONLY);
+	if(fdArtigos<0){
+	 perror("Erron a abrrir ficheiro artigos.txt");
+	 _exit(errno);
+	}
+
 
 	if((nbytes=lseek(fdArtigos, (codigoInt-1)*tamArt, SEEK_SET))<0){
 
@@ -110,6 +179,12 @@ int insereVenda(char*codigo, char*quantidade){
   	printf("tamanho do formato %d\n",qtos );
 
   	int bytesEscritos=write(fdVendas,vendas,qtos);
+
+  	actualizaStock(codigo,quantidade);
+
+  	close(fdArtigos);
+  	close(fdVendas);
+
 
   	return bytesEscritos;
 }
@@ -158,7 +233,7 @@ int main(int argc, char *argv[])
 		insereVenda(argv[1],argv[2]);
 	}
 	else {
-		insereStock(argv[1],argv[2]);
+		actualizaStock(argv[1],argv[2]);
 	}
 
 
