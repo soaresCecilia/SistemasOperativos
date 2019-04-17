@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <string.h>
+#include "debug.h"
 
 #define tamArt 16
 #define tamStocks 16
@@ -79,58 +80,98 @@ int insereStock(char*codigo, char*quantidade){
   	return bytesEscritos;
 }
 
-int actualizaStock(char* codigo, char* quantidade ){
-	int fdStocks,quantidadeArtInt, quantidadeInt,codigoInt, bytesLidos, sinal;
-	int flag=0;
+/*
+TODO o que fazer quando quer vender e não existe esses artigos em stock?
+O que fazer quando um artigo que é vendido não está nos artigos, qual é o preço?
+*/
+int atualizaStock(char* codigo, char* quantidade){
+	int fdStocks, quantidadeInt, codigoInt, nbytes, quantidadeAtual;
+  int bytesEscritos, bytesLidos, sinal, quantidadeTotal;
+	int flag = 0;
 	char buffer[2048];
 	char codigoArt[100], quantidadeArt[100];
-	char c =*quantidade;
+	char c = *quantidade;
 
-	if((c=='-')){
-		 sinal=-1;
-	} 
+	if(c == '-'){
+		 sinal = -1;
+	}
 	else{
-		sinal=1;
+		sinal = 1;
 	}
 
 
-	fdStocks=open("stocks.txt",O_RDWR);
+	fdStocks = open("stocks.txt", O_RDWR);
 
-	if(fdStocks<0){
-	 perror("Erron a abrrir ficheiro stocks.txt");
+	if(fdStocks < 0){
+	 perror("Erro ao abrrir ficheiro stocks.txt");
 	 _exit(errno);
 	}
 
-	if (lseek(fdStocks,0,SEEK_SET)<0){
+	if (lseek(fdStocks, 0, SEEK_SET) < 0){
 		perror("erro no lseek");
 		_exit(errno);
 	}
 
-	while((bytesLidos=readline(fdStocks,buffer,tamStocks))>0) {
-		sscanf(buffer,"%s %s",codigoArt, quantidadeArt);
+  DEBUG_MACRO("FD_stocks %d\n", fdStocks);
 
-		if(strcmp(codigo,codigoArt)==0){
-			buffer[0]=0;
-			codigoInt= atoi(codigo);
-			quantidadeInt = atoi(quantidade);
-			quantidadeArtInt = atoi(quantidadeArt);
-			quantidadeArtInt += (quantidadeInt*sinal);
+	while((bytesLidos = readline(fdStocks, buffer, 1)) > 0) {
+		sscanf(buffer,"%s %s", codigoArt, quantidadeArt);
 
-			sprintf(buffer,formatoStocks, codigoInt,quantidadeArtInt);
-			flag= 1;
+    //já leu a linha que quero mudar
+		if(strcmp(codigo, codigoArt) == 0){
+			buffer[0] = 0;
+			codigoInt = atoi(codigo);
+			quantidadeInt = abs(atoi(quantidade));
+			quantidadeTotal = atoi(quantidadeArt);
+
+
+      if(sinal == -1) {
+        quantidadeAtual = quantidadeTotal - quantidadeInt;
+        DEBUG_MACRO("Sinal %d\n", sinal);
+        DEBUG_MACRO("Quantidade total %d\n", quantidadeTotal);
+        DEBUG_MACRO("quantidadeInt %d\n", quantidadeInt);
+        DEBUG_MACRO("quantidadeAtual %d\n", quantidadeAtual);
+      }
+      else {
+        quantidadeAtual = quantidadeTotal + quantidadeInt;
+        DEBUG_MACRO("quantidadeTotal no else %d\n", quantidadeTotal);
+      }
+
+
+      if((nbytes = lseek(fdStocks, 0, SEEK_CUR)) < 0){
+        perror("Erro ao fazer lseek");
+        _exit(errno);
+      }
+
+      DEBUG_MACRO("N_BYTES no SEEK_CUR %d\n", nbytes);
+
+      nbytes = nbytes - tamStocks;
+
+      DEBUG_MACRO("N_BYTES Onde quero %d\n", nbytes);
+
+      if((nbytes = lseek(fdStocks, nbytes, SEEK_SET)) < 0) {
+        perror("Erro no 2.º lseek");
+        _exit(errno);
+      }
+
+			sprintf(buffer, formatoStocks, codigoInt, quantidadeAtual);
+
+      int qtos = strlen(buffer);
+      bytesEscritos = write(fdStocks, buffer, qtos);
+			flag = 1;
 		}
-	}	
+	}
 
-	if(flag==0) insereStock( codigo,quantidade);
+	if(flag == 0) bytesEscritos = insereStock( codigo,quantidade);
 
 	close(fdStocks);
 
-	return 0;
+	return bytesEscritos;
 
 }
 
 
-int insereVenda(char*codigo, char*quantidade){
+int insereVenda(char *codigo, char *quantidade){
 
 	int fdVendas, fdArtigos, codigoInt, quantidadeInt, nbytes, codNome;
 	float preco, precoTotalVenda;
@@ -140,7 +181,7 @@ int insereVenda(char*codigo, char*quantidade){
 
 	fdVendas = open("vendas.txt", O_WRONLY | O_APPEND);
 
-	if(fdVendas<0){
+	if(fdVendas < 0){
 	 perror("Erron a abrrir ficheiro vendas.txt");
 	 _exit(errno);
 	}
@@ -148,24 +189,23 @@ int insereVenda(char*codigo, char*quantidade){
 	codigoInt = atoi(codigo);
 	quantidadeInt = abs(atoi(quantidade));
 
-	fdArtigos =open("artigos.txt",O_RDONLY);
-	if(fdArtigos<0){
-	 perror("Erron a abrrir ficheiro artigos.txt");
+	fdArtigos = open("artigos.txt", O_RDONLY);
+	if(fdArtigos < 0){
+	 perror("Erro ao abrir ficheiro artigos.txt");
 	 _exit(errno);
 	}
 
 
-	if((nbytes=lseek(fdArtigos, (codigoInt-1)*tamArt, SEEK_SET))<0){
-
+	if((nbytes = lseek(fdArtigos, (codigoInt-1) * tamArt, SEEK_SET)) < 0){
 		perror("Erro no lseek");
 		_exit(errno);
 
 	}
-	
-	readline(fdArtigos,buff,tamArt);
-	sscanf(buff,"%d %f",&codNome, &preco);
 
-	precoTotalVenda = ((float)quantidadeInt)*preco;
+	readline(fdArtigos, buff, tamArt);
+	sscanf(buff,"%d %f", &codNome, &preco);
+
+	precoTotalVenda = ((float)quantidadeInt) * preco;
 
 
 	int qtos = sprintf(vendas, formatoVendas, codigoInt, quantidadeInt, precoTotalVenda);
@@ -176,15 +216,16 @@ int insereVenda(char*codigo, char*quantidade){
   	}
 
   	qtos = strlen(vendas);
-  	printf("tamanho do formato %d\n",qtos );
 
-  	int bytesEscritos=write(fdVendas,vendas,qtos);
+    //DEBUG_MACRO("tamanho do formato %d\n",qtos );
 
-  	actualizaStock(codigo,quantidade);
+  	int bytesEscritos = write(fdVendas, vendas, qtos);
+
+  	actualizaStock(codigo, quantidade);
 
   	close(fdArtigos);
-  	close(fdVendas);
 
+  	close(fdVendas);
 
   	return bytesEscritos;
 }
@@ -202,31 +243,11 @@ int procuraQtd(char* codigo){
 
 
 }*/
- 
+
 
 
 int main(int argc, char *argv[])
 {
-	/*
-	char buffer[2048];
-	char bufferStocks[2048];
-	int x;
-	int fdPipeCVtoSV = open("pipeCVtoSV.txt",O_RDONLY);
-	int fdStcks = open("stoks.txt",O_RDONLY);
-	int fdPipeSVtoCV = open("pipeSVtoCV.txt",O_RDONLY)
-
-	while((x = read(fdPipeCVtoSV,buffer,1))>0);
-
-	while( )
-
-		if(strcmp(buffer,bufferStocks)==0){
-			while(){
-				write(fdPipeSVtoCV,buffer,1);
-	}
-		}
-
-
-	}*/
 
 	criaFicheiros();
 	if(argv[2][0]=='-'){

@@ -184,7 +184,7 @@ int insereArtigo(char *preco, char *nome){
 
   int codigoInt = byte / tamArtigo;
 
-  sprintf(codigo, "%d\n", codigoInt);
+  sprintf(codigo, "%d \n", codigoInt);
 
 
   write(STDOUT_FILENO, codigo, 4);

@@ -233,3 +233,33 @@ Linha nova      16 preco   1.00
 Flag 108
 Linha nova      16 preco   1.00
 linha Antiga      9 Preco   1.00
+Em que byte abriu o strings 0
+Flag na contaLinhasStr -1
+Tamanho da string artigos 16
+Em que byte abriu o strings 0
+Linha 1
+Byteslidos 8
+Conteudo do buffer caderno
+Flag na contaLinhasStr 9
+Tamanho da string artigos 16
+Em que byte abriu o strings 0
+Linha 1
+Byteslidos 8
+Conteudo do buffer caderno
+Linha 2
+Byteslidos 6
+Conteudo do buffer lapis
+Flag na contaLinhasStr -9
+Tamanho da string artigos 16
+Em que byte abriu o strings 0
+Linha 1
+Byteslidos 8
+Conteudo do buffer caderno
+Linha 2
+Byteslidos 6
+Conteudo do buffer lapis
+Linha 3
+Byteslidos 7
+Conteudo do buffer caneta
+Flag na contaLinhasStr 10
+Tamanho da string artigos 16
