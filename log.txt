@@ -1,0 +1,235 @@
+Em que byte abriu o strings 0
+Linha 1
+Byteslidos 8
+Conteudo do buffer caderno
+Linha 2
+Byteslidos 6
+Conteudo do buffer lapis
+Linha 3
+Byteslidos 6
+Conteudo do buffer regua
+Linha 4
+Byteslidos 8
+Conteudo do buffer tesoura
+Linha 5
+Byteslidos 6
+Conteudo do buffer papel
+Linha 6
+Byteslidos 5
+Conteudo do buffer clip
+Linha 7
+Byteslidos 5
+Conteudo do buffer afia
+Linha 8
+Byteslidos 7
+Conteudo do buffer caneta
+Linha 9
+Byteslidos 5
+Conteudo do buffer capa
+Linha 10
+Byteslidos 12
+Conteudo do buffer calculadora
+Linha 11
+Byteslidos 8
+Conteudo do buffer mochila
+Linha 12
+Byteslidos 6
+Conteudo do buffer resma
+Flag na contaLinhasStr -13
+Tamanho da string artigos 16
+Em que byte abriu o strings 0
+Linha 1
+Byteslidos 8
+Conteudo do buffer caderno
+Linha 2
+Byteslidos 6
+Conteudo do buffer lapis
+Linha 3
+Byteslidos 6
+Conteudo do buffer regua
+Linha 4
+Byteslidos 8
+Conteudo do buffer tesoura
+Linha 5
+Byteslidos 6
+Conteudo do buffer papel
+Linha 6
+Byteslidos 5
+Conteudo do buffer clip
+Linha 7
+Byteslidos 5
+Conteudo do buffer afia
+Linha 8
+Byteslidos 7
+Conteudo do buffer caneta
+Linha 9
+Byteslidos 5
+Conteudo do buffer capa
+Linha 10
+Byteslidos 12
+Conteudo do buffer calculadora
+Linha 11
+Byteslidos 8
+Conteudo do buffer mochila
+Linha 12
+Byteslidos 6
+Conteudo do buffer resma
+Linha 13
+Byteslidos 3
+Conteudo do buffer eu
+Flag a cada iteracao 0
+Flag na contaLinhasStr 0
+Tamanho da string artigos 16
+Em que byte abriu o strings 0
+Linha 1
+Byteslidos 8
+Conteudo do buffer caderno
+Linha 2
+Byteslidos 6
+Conteudo do buffer lapis
+Linha 3
+Byteslidos 6
+Conteudo do buffer regua
+Linha 4
+Byteslidos 8
+Conteudo do buffer tesoura
+Linha 5
+Byteslidos 6
+Conteudo do buffer papel
+Linha 6
+Byteslidos 5
+Conteudo do buffer clip
+Linha 7
+Byteslidos 5
+Conteudo do buffer afia
+Linha 8
+Byteslidos 7
+Conteudo do buffer caneta
+Linha 9
+Byteslidos 5
+Conteudo do buffer capa
+Linha 10
+Byteslidos 12
+Conteudo do buffer calculadora
+Linha 11
+Byteslidos 8
+Conteudo do buffer mochila
+Linha 12
+Byteslidos 6
+Conteudo do buffer resma
+Linha 13
+Byteslidos 3
+Conteudo do buffer eu
+Flag na contaLinhasStr 7
+Buffer      14    0.44
+ byteslidos 176
+Linha nova      14
+Linha nova      14 preco   0.44
+Flag 7
+Linha nova      14 preco   0.44
+linha Antiga      5 Preco   0.44
+Em que byte abriu o strings 0
+Linha 1
+Byteslidos 8
+Conteudo do buffer caderno
+Linha 2
+Byteslidos 6
+Conteudo do buffer lapis
+Linha 3
+Byteslidos 6
+Conteudo do buffer regua
+Linha 4
+Byteslidos 8
+Conteudo do buffer tesoura
+Linha 5
+Byteslidos 6
+Conteudo do buffer papel
+Linha 6
+Byteslidos 5
+Conteudo do buffer clip
+Linha 7
+Byteslidos 5
+Conteudo do buffer afia
+Linha 8
+Byteslidos 7
+Conteudo do buffer caneta
+Linha 9
+Byteslidos 5
+Conteudo do buffer capa
+Linha 10
+Byteslidos 12
+Conteudo do buffer calculadora
+Linha 11
+Byteslidos 8
+Conteudo do buffer mochila
+Linha 12
+Byteslidos 6
+Conteudo do buffer resma
+Linha 13
+Byteslidos 3
+Conteudo do buffer eu
+Linha 14
+Byteslidos 5
+Conteudo do buffer lola
+Flag na contaLinhasStr -10
+Buffer      15    1.22
+ byteslidos 208
+Linha nova      15
+Linha nova      15 preco   1.22
+Flag -10
+Linha nova      15 preco   1.22
+linha Antiga      2 Preco   1.22
+Em que byte abriu o strings 0
+Linha 1
+Byteslidos 8
+Conteudo do buffer caderno
+Linha 2
+Byteslidos 6
+Conteudo do buffer lapis
+Linha 3
+Byteslidos 6
+Conteudo do buffer regua
+Linha 4
+Byteslidos 8
+Conteudo do buffer tesoura
+Linha 5
+Byteslidos 6
+Conteudo do buffer papel
+Linha 6
+Byteslidos 5
+Conteudo do buffer clip
+Linha 7
+Byteslidos 5
+Conteudo do buffer afia
+Linha 8
+Byteslidos 7
+Conteudo do buffer caneta
+Linha 9
+Byteslidos 5
+Conteudo do buffer capa
+Linha 10
+Byteslidos 12
+Conteudo do buffer calculadora
+Linha 11
+Byteslidos 8
+Conteudo do buffer mochila
+Linha 12
+Byteslidos 6
+Conteudo do buffer resma
+Linha 13
+Byteslidos 3
+Conteudo do buffer eu
+Linha 14
+Byteslidos 5
+Conteudo do buffer lola
+Linha 15
+Byteslidos 5
+Conteudo do buffer bola
+Flag na contaLinhasStr 108
+Buffer      16    1.00
+ byteslidos 144
+Linha nova      16
+Linha nova      16 preco   1.00
+Flag 108
+Linha nova      16 preco   1.00
+linha Antiga      9 Preco   1.00

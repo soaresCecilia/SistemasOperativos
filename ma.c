@@ -205,7 +205,7 @@ int alteraNome(char *codigo, char *novoNome) {
   }
 
   // TODO: RESOLVER SÓ LÊ 1 BYTE DE CADA VEZ, se ler tamArtigo dá erro
-  byteslidos = readline(fdArt, buffer, 1);
+  byteslidos = readline(fdArt, buffer, 16);
 
   sscanf(buffer, "%d %f", &linhaAntiga, &preco);
 

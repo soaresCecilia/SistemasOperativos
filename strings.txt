@@ -10,3 +10,7 @@ capa
 calculadora
 mochila
 resma
+eu
+lola
+bola
+bolaloba
