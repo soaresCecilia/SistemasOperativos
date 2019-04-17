@@ -144,7 +144,8 @@ duas casa decimais, que indica o seu preço. A função devolve o número de
 bytes escritos no ficheiro artigos.txt.
 */
 int insereArtigo(char *preco, char *nome){
-  int fd, bytesEscritos, linha;
+  int fd, bytesEscritos, linha = 0, byte = 0;
+  char codigo[100];
   int flag = 0;
   char artigo[100];
   double preco_float = atof(preco);
@@ -174,6 +175,21 @@ int insereArtigo(char *preco, char *nome){
 
   bytesEscritos = write(fd, artigo, qtos);
 
+
+  //para escrever o código no stdout
+  if ((byte = lseek (fd, 0, SEEK_CUR)) < 0) {
+    perror("Erro ao fazer lseek");
+    _exit(errno);
+  }
+
+  int codigoInt = byte / tamArtigo;
+
+  sprintf(codigo, "%d\n", codigoInt);
+
+
+  write(STDOUT_FILENO, codigo, 4);
+
+  //fecha o ficheiro artigos.txt
   close(fd);
 
   return bytesEscritos;
