@@ -144,11 +144,10 @@ duas casa decimais, que indica o seu preço. A função devolve o número de
 bytes escritos no ficheiro artigos.txt.
 */
 int insereArtigo(char *preco, char *nome){
-  int fd, bytesEscritos, linha;
+  int fd, bytesEscritos, linha = 0, byte = 0;
+  char codigo[100];
   int flag = 0;
   char artigo[100];
-  char buffer[2048];
-  buffer[0] = 0;
   double preco_float = atof(preco);
 
   linha = contaLinhasStr(nome, &flag);
@@ -176,6 +175,21 @@ int insereArtigo(char *preco, char *nome){
 
   bytesEscritos = write(fd, artigo, qtos);
 
+
+  //para escrever o código no stdout
+  if ((byte = lseek (fd, 0, SEEK_CUR)) < 0) {
+    perror("Erro ao fazer lseek");
+    _exit(errno);
+  }
+
+  int codigoInt = byte / tamArtigo;
+
+  sprintf(codigo, "%d\n", codigoInt);
+
+
+  write(STDOUT_FILENO, codigo, 4);
+
+  //fecha o ficheiro artigos.txt
   close(fd);
 
   return bytesEscritos;
@@ -186,7 +200,8 @@ int insereArtigo(char *preco, char *nome){
 Função que altera a referência do nome de um determinado artigo.
 */
 int alteraNome(char *codigo, char *novoNome) {
-  int byteslidos = 0, linhaNome = 0, linhaAntiga = 0, flag = 0;
+  int byteslidos = 0, linhaNome = 0, linhaAntiga = 0;
+  int bytesEscritos = 0, flag = 0;
   char buffer[2048];
   float preco;
   buffer[0] = 0;
@@ -222,7 +237,7 @@ int alteraNome(char *codigo, char *novoNome) {
     _exit(errno);
   }
 
-  write(fdArt, buffer, tamArtigo);
+  bytesEscritos = write(fdArt, buffer, tamArtigo);
 
   close(fdArt);
 
@@ -233,8 +248,54 @@ int alteraNome(char *codigo, char *novoNome) {
   DEBUG_MACRO("Linha nova %7d preco%7.2f\n", linhaNome, preco );
   DEBUG_MACRO("linha Antiga%7d Preco%7.2f\n", linhaAntiga, preco);
 
-  return 0;
+  return bytesEscritos;
 }
+
+
+/*
+Função que altera o preço de um artigo no fiheiro artigos.txt.
+*/
+int alteraPreco(char *codigo, char *novoPreco){
+  char buffer[2048];
+  int byteslidos, bytesEscritos, linha;
+  float precoAntigo;
+  buffer[0] = 0;
+
+  int codigoInt = atoi(codigo);
+
+  float preco = atof(novoPreco);
+
+  int fdArt = open("artigos.txt", O_RDWR);
+  if(fdArt < 0){
+    perror("Erro ao abrir o ficheiro artigos");
+    _exit(errno);
+  }
+
+  if (lseek (fdArt, (codigoInt-1) * tamArtigo, SEEK_SET) < 0) { //já está na linha do artigo pretendido
+    perror("Erro ao fazer lseek");
+    _exit(errno);
+  }
+
+  // TODO: RESOLVER SÓ LÊ 1 BYTE DE CADA VEZ, se ler tamArtigo dá erro
+  byteslidos = readline(fdArt, buffer, 1);
+
+  sscanf(buffer, "%d %f", &linha, &precoAntigo);
+  buffer[0]= 0;
+
+  sprintf(buffer, formatoArtigo, linha, preco); //converte o numero numa string de base decimal
+
+  if (lseek (fdArt, (codigoInt-1) * tamArtigo, SEEK_SET) < 0) { //já está na linha do artigo pretendido
+    perror("Erro ao fazer lseek");
+    _exit(errno);
+  }
+
+  bytesEscritos = write(fdArt, buffer, tamArtigo);
+
+  close(fdArt);
+
+  return bytesEscritos;
+}
+
 
 
 //main
@@ -256,6 +317,11 @@ int main(int argc, char *argv[]) {
 
   if(argc == 4 && (strcmp(argv[1], "n") == 0)){
     alteraNome(argv[2], argv[3]);
+  }
+
+
+  if(argc == 4 && (strcmp(argv[1], "p") == 0)){
+    alteraPreco(argv[2], argv[3]);
   }
 
   fechar_log();
