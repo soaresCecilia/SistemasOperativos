@@ -4,10 +4,12 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <string.h>
+#include <math.h>
 #include "debug.h"
 
 #define tamArt 16
 #define tamStocks 16
+#define formatoArtigo "%7d %7.2f\n"
 #define formatoStocks "%7d %7d\n"
 #define formatoVendas "%7d %7d %7.2f\n"
 
@@ -82,9 +84,10 @@ int insereStock(char*codigo, char*quantidade){
 
 /*
 TODO o que fazer quando quer vender e não existe esses artigos em stock?
-O que fazer quando um artigo que é vendido não está nos artigos, qual é o preço?
+O que fazer quando um artigo que é vendido ou atualizar o seu Stocks
+mas ele não está nos artigos, qual é o preço?
 */
-int atualizaStock(char* codigo, char* quantidade){
+int actualizaStock(char* codigo, char* quantidade){
 	int fdStocks, quantidadeInt, codigoInt, nbytes, quantidadeAtual;
   int bytesEscritos, bytesLidos, sinal, quantidadeTotal;
 	int flag = 0;
@@ -231,33 +234,103 @@ int insereVenda(char *codigo, char *quantidade){
 }
 
 
-/*
-int procuraQtd(char* codigo){
-	int fdStocks;
-	int quantidade = 0;
-	char quantidade[2048];
 
-	fdStocks = open("stocks.txt", O_RDONLY);
+int getQuantidade(char *codigo) {
+  int bytesLidos, quantidade = 0, codigoArt = 0;
+  char buffer[1024];
+  int fdStocks = open("stocks.txt", O_RDWR);
+
+  int codigoInt = atoi(codigo);
+
+	if(fdStocks < 0){
+	 perror("Erro ao abrrir ficheiro stocks.txt");
+	 _exit(errno);
+	}
+
+	if (lseek(fdStocks, 0, SEEK_SET) < 0){
+		perror("erro no lseek");
+		_exit(errno);
+	}
+
+  while((bytesLidos = readline(fdStocks, buffer, 1)) > 0) {
+    sscanf(buffer,"%d %d", &codigoArt, &quantidade);
+
+    //já leu a linha que quero mudar
+    if(codigoInt == codigoArt){
+      return quantidade;
+    }
+    else quantidade = 0; //o código não existe nos stocks
+  }
+
+  return quantidade;
+}
 
 
+int getStock_Preco(char *codigo) {
+  int bytesEscritos = 0, codigoInt, fdArt;
+  int bytesfim, nbytes, bytesLidos, cdg;
+  float preco;
+  char buffer[1024];
+  buffer[0] = 0;
+
+  int quantidade = getQuantidade(codigo);
+
+  codigoInt = atoi(codigo);
+
+  fdArt = open("artigos.txt", O_RDONLY);
+  if(fdArt < 0) {
+    perror("Erro ao abrir o ficheiro artigos");
+    _exit(errno);
+  }
+
+  if ((bytesfim = lseek(fdArt, 0,SEEK_END)) < 0) {
+    perror("Erro no lseek getStock_Preco");
+    _exit(errno);
+  }
 
 
-}*/
+  if ((nbytes = lseek(fdArt, (codigoInt - 1) * tamArt,SEEK_SET)) < 0) {
+    perror("Erro no lseek getStock_Preco");
+    _exit(errno);
+  }
 
+  //se o artigo não existir devolve preço 0
+  if (nbytes >= bytesfim) {
+    preco = 0.0;
+  }
 
+   bytesLidos = readline(fdArt, buffer, 1); //ver depois para ler mais bytes
+
+   buffer[bytesLidos] = 0;
+
+   sscanf(buffer, "%d %f", &cdg, &preco);
+
+   sprintf(buffer, "%7d %7.2f\n", quantidade, preco);
+
+   int qtos = strlen(buffer);
+
+   bytesEscritos = write(STDOUT_FILENO, buffer, qtos);
+
+   return bytesEscritos;
+}
 
 int main(int argc, char *argv[])
 {
 
-	criaFicheiros();
-	if(argv[2][0]=='-'){
-		insereVenda(argv[1],argv[2]);
-	}
-	else {
-		actualizaStock(argv[1],argv[2]);
-	}
+  if(argc == 3) {
+    criaFicheiros();
+    if(argv[2][0]=='-'){
+      insereVenda(argv[1],argv[2]);
+    }
+    else {
+      actualizaStock(argv[1],argv[2]);
+    }
+  }
 
-
+  else if(argc == 2) {
+    getStock_Preco(argv[1]);
+  }
+  else printf("Escreve dois ou três argumentos\n");
 
 
 

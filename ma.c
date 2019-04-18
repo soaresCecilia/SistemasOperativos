@@ -10,7 +10,7 @@
 
 #define tamArtigo 16
 
-#define formatoArtigo "%7d %7.2f\n"
+#define formatoArtigo "%7d %7.2f\n" //tem sete algarimos, um espaço mais sete algarimos(5 antes do ponto e 2 depois do ponto) e um \n
 
 /*
 Cria os ficheiros strings.txt e artigo.txt no diretorio onde corremos

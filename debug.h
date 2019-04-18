@@ -10,7 +10,7 @@ Debuggador do programa.
 /**
 \brief Macro que habilita o debug.
 */
-#define WITH_DEBUG 1
+#define WITH_DEBUG 0
 
 /**
 \brief Macro que define o comportamento do debug macro. Caso o debug esteja
