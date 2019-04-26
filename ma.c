@@ -5,60 +5,10 @@
 #include <errno.h>
 #include <string.h>
 #include "debug.h"
+#include "aux.h"
 
 
 
-#define tamArtigo 16
-
-#define formatoArtigo "%7d %7.2f\n" //tem sete algarimos, um espaço mais sete algarimos(5 antes do ponto e 2 depois do ponto) e um \n
-
-/*
-Cria os ficheiros strings.txt e artigo.txt no diretorio onde corremos
-o programa.
-*/
-void criaFicheiros() {
-  int fdStr, fdArt;
-
-  fdStr = open("strings.txt", O_CREAT | O_APPEND, 0600);
-
-  if(fdStr < 0) {
-    perror("Erro ao abrir o ficheiro strings.txt");
-    _exit(errno);
-  }
-
-  fdArt = open("artigos.txt", O_CREAT | O_APPEND, 0600);
-
-  if(fdArt < 0) {
-    perror("Erro ao abrir o ficheiro");
-    _exit(0);
-  }
-
-  close(fdStr);
-  close(fdArt);
-
-}
-
-/*
-Lê uma linha do ficheiro, nbytes de cada vez, devolvendo o número
-total de bytes lidos.
-
-TODO: se total for maior do que o buffer tem de fazer realloc do buffer. Tb ter
-em atenção que o buffer pode não aguentar uma linha completa.
-
-*/
-int readline(int fildes, char *buf, int nbytes) {
-    int byteslidos, total = 0;
-
-    while((byteslidos = read(fildes, buf, nbytes)) > 0){
-      total += byteslidos; //vai contando o total de bytes que lê
-      if(*buf == '\n') {
-        *buf = 0;
-        break; // se o char que está naquela posição do buffer for newline
-      }
-      buf = buf + byteslidos; //aumenta a posição no buffer onde o caracter vai ser armazenado
-    }
-    return total;
-}
 
 /*
 Insere um nome de um artigo no ficheiro strings, caso o mesmo não exista.
@@ -143,6 +93,9 @@ a linha que identifica o seu nome no ficheiro strings.txt e um float, com
 duas casa decimais, que indica o seu preço. A função devolve o número de
 bytes escritos no ficheiro artigos.txt.
 */
+
+
+//TODO: quando insere um artigo insere a sua quantidade a zero nos stocks.txt
 int insereArtigo(char *preco, char *nome){
   int fd, bytesEscritos, linha = 0, byte = 0;
   char codigo[100];
@@ -188,6 +141,8 @@ int insereArtigo(char *preco, char *nome){
 
 
   write(STDOUT_FILENO, codigo, 4);
+
+  insereStock(codigo, "0");
 
   //fecha o ficheiro artigos.txt
   close(fd);
@@ -310,7 +265,7 @@ int main(int argc, char *argv[]) {
 
 
   if(argc == 4 && (strcmp(argv[1], "i") == 0)){
-      criaFicheiros();
+      criaFicheiros("strings.txt", "artigos.txt");
       insereArtigo(argv[3], argv[2]);
 
   }

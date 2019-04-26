@@ -8,23 +8,7 @@
 #include <sys/types.h>
 #include <limits.h>
 #include "debug.h"
-
-
-
-int readline(int fildes, char *buf, int nbytes) {
-    int byteslidos, total = 0;
-
-    while((byteslidos = read(fildes, buf, nbytes)) > 0){
-      total += byteslidos; //vai contando o total de bytes que lê
-      if(*buf == '\n') {
-        *buf = 0;
-        break; // se o char que está naquela posição do buffer for newline
-      }
-      buf = buf + byteslidos; //aumenta a posição no buffer onde o caracter vai ser armazenado
-    }
-
-    return (byteslidos != EOF) ? total : EOF;
-}
+#include "aux.h"
 
 
 
@@ -39,7 +23,7 @@ int criaPipeEspecifico() {
 
   if (mkfifo(buffer, 0600) < 0) {
     perror("Erro ao criar o pipe cliente especifico.");
-    printf("Nome do pipe %s\n", buffer);
+    DEBUG_MACRO("Nome do pipe %s\n", buffer);
     _exit(errno);
   }
 
@@ -106,7 +90,7 @@ void cliente(int fdComum, int fdEspecifico){
 
     strcat(aux, buffer);
 
-    printf("Aux %s\n", aux);
+    DEBUG_MACRO("Aux %s\n", aux);
 
     int qtos = strlen(aux);
 
