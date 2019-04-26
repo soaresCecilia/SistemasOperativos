@@ -4,7 +4,8 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <string.h>
-#include <math.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 #include "debug.h"
 
 #define tamArt 16
@@ -50,6 +51,11 @@ int readline(int fildes, char *buf, int nbytes) {
     return total;
 }
 
+
+/*
+Função que insere uma entrada (formato: código e quantidade) no ficheiro
+stocks.txt. A função devolve o número de bytes escritos.
+*/
 int insereStock(char*codigo, char*quantidade){
 
 	int fdStocks, codigoInt, quantidadeInt, bytesEscritos;
@@ -57,12 +63,12 @@ int insereStock(char*codigo, char*quantidade){
 
 	fdStocks = open("stocks.txt", O_WRONLY | O_APPEND);
 	if(fdStocks<0){
-	 perror("Erron a abrrir ficheiro stocks.txt");
+	 perror("Erro a abrrir ficheiro stocks.txt");
 	 _exit(errno);
 	}
 
 	codigoInt = atoi(codigo);
-	quantidadeInt= atoi(quantidade);
+	quantidadeInt = atoi(quantidade);
 
 	int qtos = sprintf(stocks, formatoStocks, codigoInt, quantidadeInt); //converte o codigo e quantidade numa string no formato stocks
 
@@ -74,7 +80,7 @@ int insereStock(char*codigo, char*quantidade){
   	qtos = strlen(stocks);
   	printf("tamanho do formato %d\n",qtos );
 
-  	bytesEscritos=write(fdStocks,stocks,qtos);
+  	bytesEscritos = write(fdStocks, stocks, qtos);
 
 
   	close(fdStocks);
@@ -173,7 +179,11 @@ int actualizaStock(char* codigo, char* quantidade){
 
 }
 
-
+/*
+Função que insere uma entrada (formato código, quantidade vendida e
+preço total da venda) no ficheiro vendas.txt. A função devolve o
+número de bytes escritos.
+*/
 int insereVenda(char *codigo, char *quantidade){
 
 	int fdVendas, fdArtigos, codigoInt, quantidadeInt, nbytes, codNome;
@@ -234,7 +244,11 @@ int insereVenda(char *codigo, char *quantidade){
 }
 
 
-
+/*
+Função que devolve a quantidade do
+artigo, com o código passado como parâmetro, com base
+na informação obtida no ficheiro stocks.txt.
+*/
 int getQuantidade(char *codigo) {
   int bytesLidos, quantidade = 0, codigoArt = 0;
   char buffer[1024];
@@ -265,8 +279,12 @@ int getQuantidade(char *codigo) {
   return quantidade;
 }
 
-
-int getStock_Preco(char *codigo) {
+/*
+Função que escreve no ecran a quantidade e o preço do artigo
+cujo código passado é como parâmetro.A função retorna a quantidade
+de bytes escritos no ecran.
+*/
+int getStock_Preco(char *codigo, int fdCliente) {
   int bytesEscritos = 0, codigoInt, fdArt;
   int bytesfim, nbytes, bytesLidos, cdg;
   float preco;
@@ -309,14 +327,114 @@ int getStock_Preco(char *codigo) {
 
    int qtos = strlen(buffer);
 
-   bytesEscritos = write(STDOUT_FILENO, buffer, qtos);
+   bytesEscritos = write(fdCliente, buffer, qtos); //escrever no pipe
 
    return bytesEscritos;
 }
 
-int main(int argc, char *argv[])
-{
 
+/*
+Cria um pipe comum a todos os clientes
+*/
+int criaPipeComum(void) {
+  int fd;
+
+  if (mkfifo("pipeComum.txt", 0600) < 0) {
+    if (errno != EEXIST) {
+      perror("Erro ao criar o pipe comum.");
+      _exit(errno);
+    }
+  }
+
+  if ((fd = open("pipeComum.txt", O_RDWR)) < 0){
+    perror("Erro ao abrir o ficheiro pipeComum.txt");
+    _exit(errno);
+  }
+
+  return fd;
+}
+
+void fechaPipeComum(int fd) {
+  if(close(fd) < 0) {
+    perror("Erro ao fechar o pipe comum.");
+    _exit(errno);
+  }
+}
+
+/*
+Função que lê do pipe e escreve para um pipe com nome para responder
+especificamente a um determinado cliente.
+*/
+void servidor(int fd) {
+  char buffer[1024];
+  buffer[0] = 0;
+  char processo[200];
+  processo[0] = 0;
+  char comandos[200];
+  comandos[0] = 0;
+  int byteslidos, i, j, fdCliente;
+
+
+  // TODO: ler mais do que um byte de cada vez
+  while((byteslidos = readline(fd, buffer, 1)) > 0){
+
+    printf("Buffer pipe Cliente %s\n", buffer);
+
+    //buffer[byteslidos ] = 0;
+
+    for(i = 0; buffer[i] != '@'; i++){
+      processo[i] = buffer[i];
+    }
+    processo[i] = 0;
+    i++;
+
+    printf("Processo antes do .txt %s\n", processo);
+
+    for(j = 0; buffer[i] != 0; j++, i++){
+      comandos[j] = buffer[i];
+    }
+    comandos[j] = '\n';
+    comandos[++j] = 0;
+
+    strcat(processo, ".txt");
+    printf("Processo %s Comandos %s", processo, comandos);
+
+    //TODO: manter uma estrutura de dados para saber se o ficheiro está aberto
+    if ((fdCliente = open(processo, O_RDWR)) < 0) {
+      perror("Erro ao abrir o pipe cliente especifico.");
+      _exit(errno);
+    }
+
+    int qtos = strlen(comandos);
+
+    getStock_Preco(comandos, fdCliente);
+
+
+    /*
+    if (write(fdCliente, comandos, qtos) < 0) {
+      perror("Erro ao escrever no pipe do cliente.");
+      _exit(errno);
+    }
+
+    */
+    /*if(close(fdCliente) < 0) {
+      perror("Erro ao fechar o pipe do cliente.");
+      _exit(errno);
+    }*/
+  }
+
+}
+
+
+int main(int argc, char *argv[]) {
+
+  int fd = criaPipeComum();
+
+  servidor(fd);
+
+  close(fd);
+
+/*
   if(argc == 3) {
     criaFicheiros();
     if(argv[2][0]=='-'){
@@ -326,13 +444,13 @@ int main(int argc, char *argv[])
       actualizaStock(argv[1],argv[2]);
     }
   }
-
   else if(argc == 2) {
     getStock_Preco(argv[1]);
   }
   else printf("Escreve dois ou três argumentos\n");
+*/
 
 
+  return 0;
 
-	return 0;
 }
