@@ -1,6 +1,10 @@
 #ifndef __AUX_H__
 #define __AUX_H__
 
+
+
+#define permissoes 0600
+
 #define tamArtigo 16
 #define tamStocks 16
 
@@ -8,7 +12,7 @@
 #define formatoStocks "%7d %7d\n"
 #define formatoVendas "%7d %7d %7.2f\n"
 
-void criaFicheiros(char *file1, char *file2);
+void criaFicheiros(const char **files, int n);
 
 int readline(int fildes, char *buf, int nbytes);
 

@@ -36,34 +36,37 @@ int getStock_Preco(char *codigo, int fd) {
     _exit(errno);
   }
 
-   int existeCod = existeCodigo(fdArt, codigoInt);
+  int existeCod = existeCodigo(fdArt, codigoInt);
 
-   if(!existeCod) preco = 0.0;
+  if(!existeCod) preco = 0.0;
 
-   bytesLidos = readline(fdArt, buffer, 1); //ver depois para ler mais bytes
+  bytesLidos = readline(fdArt, buffer, 1); //ver depois para ler mais bytes
 
-   buffer[bytesLidos] = 0;
+  buffer[bytesLidos] = 0;
 
-   sscanf(buffer, "%d %f", &cdg, &preco);
+  sscanf(buffer, "%d %f", &cdg, &preco);
 
-   sprintf(buffer, "%7d %7.2f\n", quantidade, preco);
+  sprintf(buffer, "%7d %7.2f\n", quantidade, preco);
 
-   int qtos = strlen(buffer);
+  int qtos = strlen(buffer);
 
-   bytesEscritos = write(fd, buffer, qtos);
+  bytesEscritos = write(fd, buffer, qtos);
 
-   return bytesEscritos;
+  return bytesEscritos;
 }
 
 
 /*
-TODO o que fazer quando quer vender e não existe esses artigos em stock?
-Quero vender 10 e tenho cinco e posso vender os cinco ou não vender nenhum.
+Função que atualiza a quantidade dos artigos em stock.
 
 
-O que fazer quando um artigo que é vendido ou atualizar o seu Stocks
+TODO: O que fazer quando um artigo que é vendido ou atualizar o seu Stocks
 mas ele não está nos artigos, qual é o preço?
-Ignorava
+Ignorava.
+
+//TODO: quando o artigo não existia em stock e o insiro tenho de
+ inserir o artigo no ficheiro artigos.txt, e se sim que nome lhe dou?
+
 
 */
 int actualizaStock(char* codigo, char* quantidade){
@@ -132,7 +135,6 @@ int actualizaStock(char* codigo, char* quantidade){
 	}
 
   //significa que não existia o artigo em stock
-  //TODO: ver se tenho de inserir o artigo e se sim que nome lhe dou
 	if(flag == 0) bytesEscritos = insereStock(codigo,quantidade);
 
 	close(fdStocks);
@@ -144,8 +146,10 @@ int actualizaStock(char* codigo, char* quantidade){
 
 /*
 Função que insere uma entrada (formato código, quantidade vendida e
-preço total da venda) no ficheiro vendas.txt. A função devolve o
-número de bytes escritos.
+preço total da venda) no ficheiro vendas.txt. Caso a quantidade
+passada como parametro seja superior à quantidade do produto
+disponível em stock vende a quantidade do produto que tem em stock.
+A função devolve o número de bytes escritos.
 */
 int insereVenda(char *codigo, char *quantidade){
 
@@ -171,48 +175,50 @@ int insereVenda(char *codigo, char *quantidade){
 	 _exit(errno);
 	}
 
-
 	if((nbytes = lseek(fdArtigos, (codigoInt-1) * tamArtigo, SEEK_SET)) < 0){
 		perror("Erro no lseek");
 		_exit(errno);
-
 	}
 
 	readline(fdArtigos, buff, tamArtigo);
+
 	sscanf(buff,"%d %f", &codNome, &preco);
 
+  //consultar o stocks para ver quantos artigos existem em stock
+  int emStock = getQuantidade(codigo);
+
+  if(emStock < quantInt) { //se tiver menos produtos em stock vende só os que tiver
+    precoTotalVenda = ((float)emStock) * preco;
+    sprintf(vendas, formatoVendas, codigoInt, emStock, precoTotalVenda);
+  }
+  else {
 	precoTotalVenda = ((float)quantidadeInt) * preco;
+	sprintf(vendas, formatoVendas, codigoInt, quantidadeInt, precoTotalVenda);
+  }
 
+  int qtos = strlen(vendas);
 
-	int qtos = sprintf(vendas, formatoVendas, codigoInt, quantidadeInt, precoTotalVenda);
+  DEBUG_MACRO("tamanho do formato %d\n",qtos );
 
-	if(qtos < 0) {
-    	perror("Erro na função sprintf");
-    	_exit(errno);
-  	}
+  int bytesEscritos = write(fdVendas, vendas, qtos);
 
-  	qtos = strlen(vendas);
+  actualizaStock(codigo, quantidade);
 
-    DEBUG_MACRO("tamanho do formato %d\n",qtos );
+  close(fdArtigos);
 
-  	int bytesEscritos = write(fdVendas, vendas, qtos);
+  close(fdVendas);
 
-  	actualizaStock(codigo, quantidade);
-
-  	close(fdArtigos);
-
-  	close(fdVendas);
-
-  	return bytesEscritos;
+	return bytesEscritos;
 }
 
 /*
-Cria um pipe comum a todos os clientes
+Função que cria o pipe para onde todos os clientes escrevem
+e do qual o servidor lê.
 */
 int criaPipeComum(void) {
   int fd;
 
-  if (mkfifo("pipeComum.txt", 0600) < 0) {
+  if (mkfifo("pipeComum.txt", permissoes) < 0) {
     if (errno != EEXIST) {
       perror("Erro ao criar o pipe comum.");
       _exit(errno);
@@ -227,6 +233,10 @@ int criaPipeComum(void) {
   return fd;
 }
 
+/*
+Função que fecha o pipe para onde todos os clientes escrevem
+e do qual o servidor lê.
+*/
 void fechaPipeComum(int fd) {
   if(close(fd) < 0) {
     perror("Erro ao fechar o pipe comum.");
@@ -234,10 +244,9 @@ void fechaPipeComum(int fd) {
   }
 }
 
-
 /*
-Função que divide a string comandos em várias strings,
-tendo como elemento separador o espaço.
+Função que divide a string com os comandos a serem executados
+em várias strings, tendo como elemento separador o espaço.
 */
 int divideComandos(char *comandos, char *codigoArt, char *quant) {
   int conta = 1, j = 0, i = 0;
@@ -262,7 +271,10 @@ int divideComandos(char *comandos, char *codigoArt, char *quant) {
 }
 
 /*
-Função que executa
+Função que executa os comandos necessários para atualizar o stock e
+mostrá-lo no stdout ou apenas mostrar no stdout stock e preço, consoante
+sejam passados no stdin, respetivamente, o código do artigo e a quantidade
+(a inserir em stock ou a vender) ou somente o código do artigo.
 */
 void processaComandos(char buffer[], char *comandos, int fdCliente) {
   int conta, stock, qtos, bytesEscritos, sinal = 1;
@@ -295,9 +307,7 @@ void processaComandos(char buffer[], char *comandos, int fdCliente) {
       perror("Erro ao escrever o pipe cliente especifico.");
       _exit(errno);
     }
-
   }
-
   else if (conta == 1) {
     getStock_Preco(codigoArt, fdCliente);
   }
@@ -305,8 +315,8 @@ void processaComandos(char buffer[], char *comandos, int fdCliente) {
 }
 
 /*
-Função que lê do pipe e escreve para um pipe com nome para responder
-especificamente a um determinado cliente.
+Função em que o servidor lê do pipe comum e escreve para um
+pipe com nome para responder especificamente a um determinado cliente.
 */
 void servidor(int fd) {
   char buffer[1024];
@@ -350,13 +360,14 @@ void servidor(int fd) {
 
   }
 
-
 }
 
-
+//main
 int main(int argc, char *argv[]) {
 
-  criaFicheiros("stocks.txt", "vendas.txt");
+  const char *files[2] = {"stocks.txt", "vendas.txt"};
+
+  criaFicheiros(files, 2);
 
   int fd = criaPipeComum();
 

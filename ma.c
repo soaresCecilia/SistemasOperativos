@@ -66,7 +66,6 @@ int contaLinhasStr(char *str, int *flag) {
 
   DEBUG_MACRO("Em que byte abriu o strings %d\n", byte);
 
-
   while ((byteslidos = readline(fdStr, buffer, 1)) > 0) {
         linha++;
         DEBUG_MACRO("Linha %d\n", linha);
@@ -78,10 +77,10 @@ int contaLinhasStr(char *str, int *flag) {
         }
   }
 
-
   DEBUG_MACRO("Flag na contaLinhasStr %d\n", *flag);
 
-  if((*flag) != 0) linha++; //quando não encontra o nome no ficheiro strings quer inseri-lo na linha seguinte
+  //quando não encontra o nome no ficheiro strings quer inseri-lo na linha seguinte
+  if((*flag) != 0) linha++;
 
   close(fdStr);
 
@@ -95,10 +94,9 @@ por linha, sendo que cada artigo é composto por um inteiro que representa
 a linha que identifica o seu nome no ficheiro strings.txt e um float, com
 duas casa decimais, que indica o seu preço. A função devolve o número de
 bytes escritos no ficheiro artigos.txt.
+Sempre que é inserido um artigo insere-se o mesmo no ficheiro stock com
+a quantidade a zero.
 */
-
-
-//quando insere um artigo insere a sua quantidade a zero nos stocks.txt
 int insereArtigo(char *preco, char *nome){
   int fd, bytesEscritos, linha = 0, byte = 0;
   char codigo[100];
@@ -110,11 +108,9 @@ int insereArtigo(char *preco, char *nome){
 
   if(flag != 0) insereNome(nome);
 
-
   sprintf(artigo, formatoArtigo, linha, preco_float);
 
   DEBUG_MACRO("Tamanho da string artigos %d\n", qtos);
-
 
   fd = open("artigos.txt", O_WRONLY | O_APPEND);
 
@@ -127,8 +123,6 @@ int insereArtigo(char *preco, char *nome){
 
   bytesEscritos = write(fd, artigo, qtos);
 
-
-  //para escrever o código no stdout
   if ((byte = lseek (fd, 0, SEEK_CUR)) < 0) {
     perror("Erro ao fazer lseek");
     _exit(errno);
@@ -145,7 +139,6 @@ int insereArtigo(char *preco, char *nome){
   //insere no stocks.txt a quantidade a zero
   insereStock(codigo, "0");
 
-  //fecha o ficheiro artigos.txt
   close(fd);
 
   return bytesEscritos;
@@ -154,8 +147,8 @@ int insereArtigo(char *preco, char *nome){
 
 /*
 Função que altera a referência do nome de um determinado artigo.
-
-Quando altera nome que não existe código não faz nada
+Quando se pretende alterar um nome de um artigo que não existe o
+programa ignora essa pretensão.
 */
 int alteraNome(char *codigo, char *novoNome) {
   int byteslidos = 0, linhaNome = 0, linhaAntiga = 0;
@@ -172,6 +165,7 @@ int alteraNome(char *codigo, char *novoNome) {
     _exit(errno);
   }
 
+  //Se o artigo não existe não se faz nada.
   int codExiste = existeCodigo(fdArt, codigoInt);
 
   if(!codExiste) return bytesEscritos;
@@ -183,9 +177,11 @@ int alteraNome(char *codigo, char *novoNome) {
 
   buffer[0] = 0;
 
-  linhaNome = contaLinhasStr(novoNome, &flag); //a linha vai ser a referencia do novo nome
+  //a linha vai ser a referencia do novo nome
+  linhaNome = contaLinhasStr(novoNome, &flag);
 
-  if(flag != 0) insereNome(novoNome); //se não existir o nome para que quer mudar tem de o inserir
+  //se não existir o nome para que quer mudar tem de o inserir
+  if(flag != 0) insereNome(novoNome);
 
   sprintf(buffer, formatoArtigo, linhaNome, preco);
 
@@ -212,8 +208,9 @@ int alteraNome(char *codigo, char *novoNome) {
 
 /*
 Função que altera o preço de um artigo no fiheiro artigos.txt.
-
-Quando tenta alterar o preco de um artigo que não existe não faz nada
+No caso de se pretender alterar o preco de um artigo cujo código
+não existe, o programa não faz qualquer alteração, simplesmente
+ignora essa pretensão.
 */
 int alteraPreco(char *codigo, char *novoPreco){
   char buffer[2048];
@@ -231,7 +228,8 @@ int alteraPreco(char *codigo, char *novoPreco){
     _exit(errno);
   }
 
-  if (lseek (fdArt, (codigoInt-1) * tamArtigo, SEEK_SET) < 0) { //já está na linha do artigo pretendido
+  //já está na linha do artigo pretendido
+  if (lseek (fdArt, (codigoInt-1) * tamArtigo, SEEK_SET) < 0) {
     perror("Erro ao fazer lseek");
     _exit(errno);
   }
@@ -260,28 +258,44 @@ int alteraPreco(char *codigo, char *novoPreco){
 
 //main
 int main(int argc, char *argv[]) {
+  int byteslidos = 0;
+  char buffer[2048];
+  buffer[0] = 0;
+  char letra[2];
+  letra[0] = 0;
+  char nome_codigo[1000];
+  nome_codigo[0] = 0;
+  char preco_nome[500];
+  preco_nome[0] = 0;
+  const char *files[3] = {"strings.txt", "artigos.txt", "stocks.txt"};
+
   abrir_log();
 
-  if(argc < 4) {
-    perror("Número de argumentos insuficientes. Tem de passar 4 argumentos.");
-    fechar_log();
-    _exit(0);
-  }
+  while(byteslidos != EOF) {   //TODO: ler mais do que um byte
 
+    //TODO: mais do que 1 byte
+    if ((byteslidos = readline(0, buffer, 1)) < 0)
+      break;
 
-  if(argc == 4 && (strcmp(argv[1], "i") == 0)){
-      criaFicheiros("strings.txt", "artigos.txt");
-      insereArtigo(argv[3], argv[2]);
+      buffer[byteslidos - 1] = '\n';
 
-  }
+      buffer[byteslidos] = 0;
 
-  if(argc == 4 && (strcmp(argv[1], "n") == 0)){
-    alteraNome(argv[2], argv[3]);
-  }
+      sscanf(buffer, "%s %s %s", letra, nome_codigo, preco_nome);
 
+      if(strcmp(letra, "i") == 0){
+          criaFicheiros(files, 3);
+          insereArtigo(preco_nome, nome_codigo);
+      }
 
-  if(argc == 4 && (strcmp(argv[1], "p") == 0)){
-    alteraPreco(argv[2], argv[3]);
+      if(strcmp(letra, "n") == 0){
+          alteraNome(nome_codigo, preco_nome);
+      }
+
+      if(strcmp(letra, "p") == 0){
+          alteraPreco(nome_codigo, preco_nome);
+      }
+
   }
 
   fechar_log();

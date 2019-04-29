@@ -10,28 +10,21 @@
 #include "aux.h"
 
 /*
-Cria os ficheiros strings.txt e artigo.txt no diretorio onde corremos
-o programa.
+Cria os ficheiros no diretorio onde corremos o programa.
 */
-void criaFicheiros(char *file1, char *file2) {
-  int fdStr, fdArt;
+void criaFicheiros(const char *file[], int n) {
+  int fd;
 
-  fdStr = open(file1, O_CREAT | O_APPEND, 0600);
+  for(int i = 0; i < n; i++) {
+    fd = open(file[i], O_CREAT | O_APPEND, permissoes);
 
-  if(fdStr < 0) {
-    perror("Erro ao abrir o ficheiro strings.txt");
+    if(fd < 0) {
+    perror("Erro ao abrir os ficheiros.");
     _exit(errno);
+    }
+
+    close(fd);
   }
-
-  fdArt = open(file2, O_CREAT | O_APPEND, 0600);
-
-  if(fdArt < 0) {
-    perror("Erro ao abrir o ficheiro");
-    _exit(0);
-  }
-
-  close(fdStr);
-  close(fdArt);
 
 }
 
@@ -71,7 +64,7 @@ int getQuantidade(char *codigo) {
   int codigoInt = atoi(codigo);
 
 	if(fdStocks < 0){
-	 perror("Erro ao abrrir ficheiro stocks.txt");
+	 perror("Erro ao abrir ficheiro stocks.txt");
 	 _exit(errno);
 	}
 
@@ -112,9 +105,10 @@ int insereStock(char*codigo, char*quantidade){
 	}
 
 	codigoInt = atoi(codigo);
+
 	quantidadeInt = atoi(quantidade);
 
-	int qtos = sprintf(stocks, formatoStocks, codigoInt, quantidadeInt); //converte o codigo e quantidade numa string no formato stocks
+	int qtos = sprintf(stocks, formatoStocks, codigoInt, quantidadeInt);
 
 	if(qtos < 0) {
     	perror("Erro na função sprintf");
@@ -122,10 +116,10 @@ int insereStock(char*codigo, char*quantidade){
   	}
 
   	qtos = strlen(stocks);
+
   	DEBUG_MACRO("tamanho do formato %d\n",qtos );
 
   	bytesEscritos = write(fdStocks, stocks, qtos);
-
 
   	close(fdStocks);
 
@@ -145,16 +139,13 @@ if ((bytesfim = lseek(fd, 0, SEEK_END)) < 0) {
   _exit(errno);
 }
 
-
 if ((nbytes = lseek(fd, (codigoInt - 1) * tamArtigo, SEEK_SET)) < 0) {
   perror("Erro no lseek da posicao do artigo");
   _exit(errno);
 }
 
 //se o artigo não existir devolve preço 0 o nbytes tem de ser menor que bytesfim não pode ser igual
-if (nbytes < bytesfim)
-  resultado = 1;
-
+if (nbytes < bytesfim) resultado = 1;
 
   return resultado;
 }

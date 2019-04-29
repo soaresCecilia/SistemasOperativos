@@ -11,7 +11,11 @@
 #include "aux.h"
 
 
-
+/*
+Função que cria um pipe com nome específico para cada
+cliente que interaja com o servidor. Esse pipe é nomeado
+com base no pid do processo que está a executar.
+*/
 int criaPipeEspecifico() {
   char buffer[200];
   buffer[0] = 0;
@@ -21,7 +25,7 @@ int criaPipeEspecifico() {
 
   sprintf(buffer, "p%d.txt", pid);
 
-  if (mkfifo(buffer, 0600) < 0) {
+  if (mkfifo(buffer, permissoes) < 0) {
     perror("Erro ao criar o pipe cliente especifico.");
     DEBUG_MACRO("Nome do pipe %s\n", buffer);
     _exit(errno);
@@ -36,7 +40,10 @@ int criaPipeEspecifico() {
 }
 
 
-int abrePipeComum() {
+/*
+Função que abre o pipe para onde todos os clientes escrevem
+e do qual o servidor lê.
+*/int abrePipeComum() {
   int fd;
 
   if ((fd = open("pipeComum.txt", O_RDWR)) < 0){
@@ -47,6 +54,9 @@ int abrePipeComum() {
   return fd;
 }
 
+/*
+Função que lê do pipe e que imprime o resultado no stdout.
+*/
 void lePipeEspecifico(int fd) {
   int byteslidos = 0;
   char processo[200];
@@ -66,7 +76,12 @@ void lePipeEspecifico(int fd) {
   }
 }
 
-//escreve no pipe tudo o que leu do STDIN_FILENO
+/*
+Função que implementa a rotina do cliente, ou seja, escreve
+para o pipe comum o que lê do stdin e que lê do pipe especificamente
+criado para o servidor responder a um determinado cliente,
+sendo que essas resposta são impressas no stdout (lePipeEspecifico).
+*/
 void cliente(int fdComum, int fdEspecifico){
   char buffer[1024];
   buffer[0] = 0;
@@ -104,6 +119,10 @@ void cliente(int fdComum, int fdEspecifico){
   }
 }
 
+/*
+Função que fecha o pipe para onde todos os clientes escrevem
+e do qual o servidor lê.
+*/
 void fechaPipeComum(int fd) {
   if(close(fd) < 0) {
     perror("Erro ao fechar o pipe Comum.");
@@ -111,7 +130,10 @@ void fechaPipeComum(int fd) {
   }
 }
 
-
+/*
+Função que fecha o pipe do processo específico que está
+a comunicar com o servidor.
+*/
 void fechaPipeEspecifico(int fd) {
   if(close(fd) < 0) {
     perror("Erro ao fechar o pipe específico.");
@@ -120,7 +142,7 @@ void fechaPipeEspecifico(int fd) {
 }
 
 
-//main ler do terminal
+//main
 int main(int argc, char *argv[]) {
 
   int fdEspecifico = criaPipeEspecifico();
