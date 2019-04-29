@@ -6,12 +6,140 @@
 #include <string.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <ctype.h>
 #include "debug.h"
 #include "aux.h"
 
 
 
 
+
+/*
+Função que escreve no ecran a quantidade e o preço do artigo
+cujo código passado é como parâmetro.A função retorna a quantidade
+de bytes escritos no ecran.
+*/
+int getStock_Preco(char *codigo, int fd) {
+  int bytesEscritos = 0, codigoInt, fdArt;
+  int bytesLidos, cdg;
+  float preco;
+  char buffer[1024];
+  buffer[0] = 0;
+
+  int quantidade = getQuantidade(codigo);
+
+  codigoInt = atoi(codigo);
+
+  fdArt = open("artigos.txt", O_RDONLY);
+  if(fdArt < 0) {
+    perror("Erro ao abrir o ficheiro artigos");
+    _exit(errno);
+  }
+
+   int existeCod = existeCodigo(fdArt, codigoInt);
+
+   if(!existeCod) preco = 0.0;
+
+   bytesLidos = readline(fdArt, buffer, 1); //ver depois para ler mais bytes
+
+   buffer[bytesLidos] = 0;
+
+   sscanf(buffer, "%d %f", &cdg, &preco);
+
+   sprintf(buffer, "%7d %7.2f\n", quantidade, preco);
+
+   int qtos = strlen(buffer);
+
+   bytesEscritos = write(fd, buffer, qtos);
+
+   return bytesEscritos;
+}
+
+
+/*
+TODO o que fazer quando quer vender e não existe esses artigos em stock?
+Quero vender 10 e tenho cinco e posso vender os cinco ou não vender nenhum.
+
+
+O que fazer quando um artigo que é vendido ou atualizar o seu Stocks
+mas ele não está nos artigos, qual é o preço?
+Ignorava
+
+*/
+int actualizaStock(char* codigo, char* quantidade){
+	int fdStocks, quantidadeInt, codigoInt, nbytes, quantidadeAtual;
+  int bytesEscritos, bytesLidos, sinal, quantidadeTotal;
+	int flag = 0;
+	char buffer[2048];
+	char codigoArt[700], quantidadeArt[700];
+	char c = *quantidade;
+
+	if(c == '-'){
+		 sinal = -1;
+	}
+	else{
+		sinal = 1;
+	}
+
+	if ((fdStocks = open("stocks.txt", O_RDWR)) < 0) {
+	 perror("Erro ao abrrir ficheiro stocks.txt");
+	 _exit(errno);
+	}
+
+	if (lseek(fdStocks, 0, SEEK_SET) < 0){
+		perror("erro no lseek");
+		_exit(errno);
+	}
+
+  //caso o artigo já existe em stock
+	while((bytesLidos = readline(fdStocks, buffer, 1)) > 0) {
+		sscanf(buffer,"%s %s", codigoArt, quantidadeArt);
+
+    //já leu a linha que quero mudar
+		if(strcmp(codigo, codigoArt) == 0){
+			buffer[0] = 0;
+			codigoInt = atoi(codigo);
+			quantidadeInt = abs(atoi(quantidade));
+			quantidadeTotal = atoi(quantidadeArt);
+
+      if(sinal == -1) quantidadeAtual = quantidadeTotal - quantidadeInt;
+
+      else quantidadeAtual = quantidadeTotal + quantidadeInt;
+
+      //verifica onde está
+      if((nbytes = lseek(fdStocks, 0, SEEK_CUR)) < 0){
+        perror("Erro ao fazer lseek");
+        _exit(errno);
+      }
+
+      //linha onde está o artigo no stocks.txt
+      nbytes = nbytes - tamStocks;
+
+      //posiciona-se na linha que pretende atualizar
+      if((nbytes = lseek(fdStocks, nbytes, SEEK_SET)) < 0) {
+        perror("Erro no 2.º lseek");
+        _exit(errno);
+      }
+
+			sprintf(buffer, formatoStocks, codigoInt, quantidadeAtual);
+
+      int qtos = strlen(buffer);
+
+      bytesEscritos = write(fdStocks, buffer, qtos);
+
+      flag = 1;
+		}
+	}
+
+  //significa que não existia o artigo em stock
+  //TODO: ver se tenho de inserir o artigo e se sim que nome lhe dou
+	if(flag == 0) bytesEscritos = insereStock(codigo,quantidade);
+
+	close(fdStocks);
+
+	return bytesEscritos;
+
+}
 
 
 /*
@@ -78,158 +206,6 @@ int insereVenda(char *codigo, char *quantidade){
   	return bytesEscritos;
 }
 
-
-/*
-Função que escreve no ecran a quantidade e o preço do artigo
-cujo código passado é como parâmetro.A função retorna a quantidade
-de bytes escritos no ecran.
-*/
-int getStock_Preco(char *codigo) {
-  int bytesEscritos = 0, codigoInt, fdArt;
-  int bytesfim, nbytes, bytesLidos, cdg;
-  float preco;
-  char buffer[1024];
-  buffer[0] = 0;
-
-  int quantidade = getQuantidade(codigo);
-
-  codigoInt = atoi(codigo);
-
-  fdArt = open("artigos.txt", O_RDONLY);
-  if(fdArt < 0) {
-    perror("Erro ao abrir o ficheiro artigos");
-    _exit(errno);
-  }
-
-  if ((bytesfim = lseek(fdArt, 0,SEEK_END)) < 0) {
-    perror("Erro no lseek getStock_Preco");
-    _exit(errno);
-  }
-
-
-  if ((nbytes = lseek(fdArt, (codigoInt - 1) * tamArtigo,SEEK_SET)) < 0) {
-    perror("Erro no lseek getStock_Preco");
-    _exit(errno);
-  }
-
-  //se o artigo não existir devolve preço 0
-  if (nbytes >= bytesfim) {
-    preco = 0.0;
-  }
-
-   bytesLidos = readline(fdArt, buffer, 1); //ver depois para ler mais bytes
-
-   buffer[bytesLidos] = 0;
-
-   sscanf(buffer, "%d %f", &cdg, &preco);
-
-   sprintf(buffer, "%7d %7.2f\n", quantidade, preco);
-
-   int qtos = strlen(buffer);
-
-   bytesEscritos = write(STDOUT_FILENO, buffer, qtos);
-
-   return bytesEscritos;
-}
-
-
-/*
-TODO o que fazer quando quer vender e não existe esses artigos em stock?
-Quero vender 10 e tenho cinco e posso vender os cinco ou não vender nenhum.
-
-
-O que fazer quando um artigo que é vendido ou atualizar o seu Stocks
-mas ele não está nos artigos, qual é o preço?
-Ignorava
-
-*/
-int actualizaStock(char* codigo, char* quantidade){
-	int fdStocks, quantidadeInt, codigoInt, nbytes, quantidadeAtual;
-  int bytesEscritos, bytesLidos, sinal, quantidadeTotal;
-	int flag = 0;
-	char buffer[2048];
-	char codigoArt[100], quantidadeArt[100];
-	char c = *quantidade;
-
-	if(c == '-'){
-		 sinal = -1;
-	}
-	else{
-		sinal = 1;
-	}
-
-
-	fdStocks = open("stocks.txt", O_RDWR);
-
-	if(fdStocks < 0){
-	 perror("Erro ao abrrir ficheiro stocks.txt");
-	 _exit(errno);
-	}
-
-	if (lseek(fdStocks, 0, SEEK_SET) < 0){
-		perror("erro no lseek");
-		_exit(errno);
-	}
-
-  DEBUG_MACRO("FD_stocks %d\n", fdStocks);
-
-	while((bytesLidos = readline(fdStocks, buffer, 1)) > 0) {
-		sscanf(buffer,"%s %s", codigoArt, quantidadeArt);
-
-    //já leu a linha que quero mudar
-		if(strcmp(codigo, codigoArt) == 0){
-			buffer[0] = 0;
-			codigoInt = atoi(codigo);
-			quantidadeInt = abs(atoi(quantidade));
-			quantidadeTotal = atoi(quantidadeArt);
-
-
-      if(sinal == -1) {
-        quantidadeAtual = quantidadeTotal - quantidadeInt;
-        DEBUG_MACRO("Sinal %d\n", sinal);
-        DEBUG_MACRO("Quantidade total %d\n", quantidadeTotal);
-        DEBUG_MACRO("quantidadeInt %d\n", quantidadeInt);
-        DEBUG_MACRO("quantidadeAtual %d\n", quantidadeAtual);
-      }
-      else {
-        quantidadeAtual = quantidadeTotal + quantidadeInt;
-        DEBUG_MACRO("quantidadeTotal no else %d\n", quantidadeTotal);
-      }
-
-
-      if((nbytes = lseek(fdStocks, 0, SEEK_CUR)) < 0){
-        perror("Erro ao fazer lseek");
-        _exit(errno);
-      }
-
-      DEBUG_MACRO("N_BYTES no SEEK_CUR %d\n", nbytes);
-
-      nbytes = nbytes - tamStocks;
-
-      DEBUG_MACRO("N_BYTES Onde quero %d\n", nbytes);
-
-      if((nbytes = lseek(fdStocks, nbytes, SEEK_SET)) < 0) {
-        perror("Erro no 2.º lseek");
-        _exit(errno);
-      }
-
-			sprintf(buffer, formatoStocks, codigoInt, quantidadeAtual);
-
-      int qtos = strlen(buffer);
-      bytesEscritos = write(fdStocks, buffer, qtos);
-			flag = 1;
-		}
-	}
-
-	if(flag == 0) bytesEscritos = insereStock( codigo,quantidade);
-
-	close(fdStocks);
-
-	return bytesEscritos;
-
-}
-
-
 /*
 Cria um pipe comum a todos os clientes
 */
@@ -258,6 +234,76 @@ void fechaPipeComum(int fd) {
   }
 }
 
+
+/*
+Função que divide a string comandos em várias strings,
+tendo como elemento separador o espaço.
+*/
+int divideComandos(char *comandos, char *codigoArt, char *quant) {
+  int conta = 1, j = 0, i = 0;
+
+   for(i = 0; comandos[i] != 0 && comandos[i] != ' '; i++){
+     codigoArt[i] = comandos[i];
+   }
+   codigoArt[i] = 0;
+
+   if(comandos[i] == ' ') {
+     while(comandos[i] == ' ') i++;
+     for(j = 0; comandos[i] != 0; i++, j++){
+       quant[j] = comandos[i];
+       conta++;
+     }
+   }
+   quant[j] = 0;
+
+   printf("codigoArt %s Quantidade %s Conta %d\n", codigoArt, quant, conta);
+
+   return conta;
+}
+
+/*
+Função que executa
+*/
+void processaComandos(char buffer[], char *comandos, int fdCliente) {
+  int conta, stock, qtos, bytesEscritos, sinal = 1;
+  char codigoArt[700];
+  codigoArt[0] = 0;
+  char quant[700];
+  quant[0] = 0;
+
+  conta = divideComandos(comandos, codigoArt, quant);
+
+  if(conta > 1) {
+      if(quant[0] == '-') {
+        sinal = -1;
+        insereVenda(codigoArt, quant);
+      }
+
+      else if(sinal == 1) {
+        actualizaStock(codigoArt, quant);
+      }
+
+  stock = getQuantidade(codigoArt);
+
+  printf("Quantidade em stock %d\n", stock);
+
+  sprintf(buffer, "%7d\n", stock);
+
+  qtos = strlen(buffer);
+
+  if((bytesEscritos = write(fdCliente, buffer, qtos)) < 0) {
+      perror("Erro ao escrever o pipe cliente especifico.");
+      _exit(errno);
+    }
+
+  }
+
+  else if (conta == 1) {
+    getStock_Preco(codigoArt, fdCliente);
+  }
+
+}
+
 /*
 Função que lê do pipe e escreve para um pipe com nome para responder
 especificamente a um determinado cliente.
@@ -276,8 +322,6 @@ void servidor(int fd) {
   while((byteslidos = readline(fd, buffer, 1)) > 0){
 
     DEBUG_MACRO("Buffer pipe Cliente %s\n", buffer);
-
-    //buffer[byteslidos ] = 0;
 
     for(i = 0; buffer[i] != '@'; i++){
       processo[i] = buffer[i];
@@ -302,18 +346,10 @@ void servidor(int fd) {
       _exit(errno);
     }
 
-    //ver se ele só manda um comando ou 2
-
-    //se mandar 1 comando faz:
-    int stock = getQuantidade(comandos);
-    sprintf(buffer, "%7d\n", stock);
-
-    int qtos = strlen(buffer);
-
-    int bytesEscritos = write(fdCliente, buffer, qtos);
-
+    processaComandos(buffer, comandos, fdCliente);
 
   }
+
 
 }
 

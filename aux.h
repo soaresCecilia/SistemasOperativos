@@ -16,4 +16,6 @@ int getQuantidade(char *codigo);
 
 int insereStock(char*codigo, char*quantidade);
 
+int existeCodigo(int fd, int codigo);
+
 #endif

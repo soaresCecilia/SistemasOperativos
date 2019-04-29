@@ -97,6 +97,8 @@ int getQuantidade(char *codigo) {
 /*
 Função que insere uma entrada (formato: código e quantidade) no ficheiro
 stocks.txt. A função devolve o número de bytes escritos.
+
+TODO: a função que insere um produto em stock deve criar o artigo caso ele não exista
 */
 int insereStock(char*codigo, char*quantidade){
 
@@ -104,7 +106,7 @@ int insereStock(char*codigo, char*quantidade){
 	char stocks[100];
 
 	fdStocks = open("stocks.txt", O_WRONLY | O_APPEND);
-	if(fdStocks<0){
+	if(fdStocks < 0){
 	 perror("Erro a abrrir ficheiro stocks.txt");
 	 _exit(errno);
 	}
@@ -128,4 +130,31 @@ int insereStock(char*codigo, char*quantidade){
   	close(fdStocks);
 
   	return bytesEscritos;
+}
+
+
+
+/*
+Função que verifica se o código introduzido existe no ficheiro.
+*/
+int existeCodigo(int fd, int codigoInt) {
+  int resultado = 0, nbytes, bytesfim;
+
+if ((bytesfim = lseek(fd, 0, SEEK_END)) < 0) {
+  perror("Erro no lseek a partir do fim.");
+  _exit(errno);
+}
+
+
+if ((nbytes = lseek(fd, (codigoInt - 1) * tamArtigo, SEEK_SET)) < 0) {
+  perror("Erro no lseek da posicao do artigo");
+  _exit(errno);
+}
+
+//se o artigo não existir devolve preço 0 o nbytes tem de ser menor que bytesfim não pode ser igual
+if (nbytes < bytesfim)
+  resultado = 1;
+
+
+  return resultado;
 }

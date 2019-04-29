@@ -7,7 +7,10 @@
 #include "debug.h"
 #include "aux.h"
 
+//TODO: no altera nome e preco o que acontece quando o artigo
+//não existe ou não existe o ficheiro artigos.
 
+//Quando o artigo tem o mesmo nome e preco diferentes o que fazer.
 
 
 /*
@@ -95,7 +98,7 @@ bytes escritos no ficheiro artigos.txt.
 */
 
 
-//TODO: quando insere um artigo insere a sua quantidade a zero nos stocks.txt
+//quando insere um artigo insere a sua quantidade a zero nos stocks.txt
 int insereArtigo(char *preco, char *nome){
   int fd, bytesEscritos, linha = 0, byte = 0;
   char codigo[100];
@@ -108,14 +111,10 @@ int insereArtigo(char *preco, char *nome){
   if(flag != 0) insereNome(nome);
 
 
-  int qtos = sprintf(artigo, formatoArtigo, linha, preco_float); //converte o numero numa string de base decimal
+  sprintf(artigo, formatoArtigo, linha, preco_float);
 
   DEBUG_MACRO("Tamanho da string artigos %d\n", qtos);
 
-  if(qtos < 0) {
-    perror("Erro na função sprintf");
-    _exit(errno);
-  }
 
   fd = open("artigos.txt", O_WRONLY | O_APPEND);
 
@@ -124,7 +123,7 @@ int insereArtigo(char *preco, char *nome){
     _exit(0);
   }
 
-  qtos = strlen(artigo);
+  int qtos = strlen(artigo);
 
   bytesEscritos = write(fd, artigo, qtos);
 
@@ -137,11 +136,13 @@ int insereArtigo(char *preco, char *nome){
 
   int codigoInt = byte / tamArtigo;
 
-  sprintf(codigo, "%d \n", codigoInt);
+  sprintf(codigo, "%d\n", codigoInt);
 
+  qtos = strlen(codigo);
 
-  write(STDOUT_FILENO, codigo, 4);
+  write(STDOUT_FILENO, codigo, qtos);
 
+  //insere no stocks.txt a quantidade a zero
   insereStock(codigo, "0");
 
   //fecha o ficheiro artigos.txt
@@ -153,6 +154,8 @@ int insereArtigo(char *preco, char *nome){
 
 /*
 Função que altera a referência do nome de um determinado artigo.
+
+Quando altera nome que não existe código não faz nada
 */
 int alteraNome(char *codigo, char *novoNome) {
   int byteslidos = 0, linhaNome = 0, linhaAntiga = 0;
@@ -169,13 +172,12 @@ int alteraNome(char *codigo, char *novoNome) {
     _exit(errno);
   }
 
-  if (lseek (fdArt, (codigoInt-1) * tamArtigo, SEEK_SET) < 0) { //já está na linha do artigo pretendido
-    perror("Erro ao fazer lseek");
-    _exit(errno);
-  }
+  int codExiste = existeCodigo(fdArt, codigoInt);
+
+  if(!codExiste) return bytesEscritos;
 
   // TODO: RESOLVER SÓ LÊ 1 BYTE DE CADA VEZ, se ler tamArtigo dá erro
-  byteslidos = readline(fdArt, buffer, 16);
+  byteslidos = readline(fdArt, buffer, 1);
 
   sscanf(buffer, "%d %f", &linhaAntiga, &preco);
 
@@ -185,9 +187,10 @@ int alteraNome(char *codigo, char *novoNome) {
 
   if(flag != 0) insereNome(novoNome); //se não existir o nome para que quer mudar tem de o inserir
 
-  sprintf(buffer, formatoArtigo, linhaNome, preco); //converte o numero numa string de base decimal
+  sprintf(buffer, formatoArtigo, linhaNome, preco);
 
-  if (lseek (fdArt, (codigoInt-1) * tamArtigo, SEEK_SET) < 0) { //já está na linha do artigo pretendido
+  //volta ao inicio da linha que quer alterar
+  if (lseek (fdArt, (codigoInt-1) * tamArtigo, SEEK_SET) < 0) {
     perror("Erro ao fazer lseek");
     _exit(errno);
   }
@@ -209,10 +212,12 @@ int alteraNome(char *codigo, char *novoNome) {
 
 /*
 Função que altera o preço de um artigo no fiheiro artigos.txt.
+
+Quando tenta alterar o preco de um artigo que não existe não faz nada
 */
 int alteraPreco(char *codigo, char *novoPreco){
   char buffer[2048];
-  int byteslidos, bytesEscritos, linha;
+  int byteslidos, bytesEscritos = 0, linha;
   float precoAntigo;
   buffer[0] = 0;
 
@@ -237,12 +242,12 @@ int alteraPreco(char *codigo, char *novoPreco){
   sscanf(buffer, "%d %f", &linha, &precoAntigo);
   buffer[0]= 0;
 
-  sprintf(buffer, formatoArtigo, linha, preco); //converte o numero numa string de base decimal
+  sprintf(buffer, formatoArtigo, linha, preco);
 
-  if (lseek (fdArt, (codigoInt-1) * tamArtigo, SEEK_SET) < 0) { //já está na linha do artigo pretendido
-    perror("Erro ao fazer lseek");
-    _exit(errno);
-  }
+  int codExiste = existeCodigo(fdArt, codigoInt);
+
+  //quando o código do artigo não existe não altera o preco
+  if(!codExiste) return bytesEscritos;
 
   bytesEscritos = write(fdArt, buffer, tamArtigo);
 
