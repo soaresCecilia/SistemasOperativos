@@ -105,7 +105,12 @@ int actualizaStock(char* codigo, char* quantidade){
 			quantidadeInt = abs(atoi(quantidade));
 			quantidadeTotal = atoi(quantidadeArt);
 
-      if(sinal == -1) quantidadeAtual = quantidadeTotal - quantidadeInt;
+      if(sinal == -1){
+        if(quantidadeTotal < quantidadeInt) {
+          quantidadeAtual = 0;
+        }
+        else quantidadeAtual = quantidadeTotal - quantidadeInt;
+      }
 
       else quantidadeAtual = quantidadeTotal + quantidadeInt;
 
@@ -153,7 +158,8 @@ A função devolve o número de bytes escritos.
 */
 int insereVenda(char *codigo, char *quantidade){
 
-	int fdVendas, fdArtigos, codigoInt, quantidadeInt, nbytes, codNome;
+	int fdVendas, fdArtigos, codigoInt;
+  int bytesEscritos = 0, quantidadeInt, nbytes, codNome;
 	float preco, precoTotalVenda;
 	char buff[2048];
 	char vendas[100];
@@ -187,7 +193,10 @@ int insereVenda(char *codigo, char *quantidade){
   //consultar o stocks para ver quantos artigos existem em stock
   int emStock = getQuantidade(codigo);
 
-  if(emStock < quantInt) { //se tiver menos produtos em stock vende só os que tiver
+
+  if(emStock == 0) return bytesEscritos;
+
+  if(emStock > 0 && emStock < quantidadeInt) { //se tiver menos produtos em stock vende só os que tiver
     precoTotalVenda = ((float)emStock) * preco;
     sprintf(vendas, formatoVendas, codigoInt, emStock, precoTotalVenda);
   }
@@ -200,7 +209,7 @@ int insereVenda(char *codigo, char *quantidade){
 
   DEBUG_MACRO("tamanho do formato %d\n",qtos );
 
-  int bytesEscritos = write(fdVendas, vendas, qtos);
+  bytesEscritos = write(fdVendas, vendas, qtos);
 
   actualizaStock(codigo, quantidade);
 
@@ -296,8 +305,6 @@ void processaComandos(char buffer[], char *comandos, int fdCliente) {
       }
 
   stock = getQuantidade(codigoArt);
-
-  printf("Quantidade em stock %d\n", stock);
 
   sprintf(buffer, "%7d\n", stock);
 

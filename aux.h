@@ -3,6 +3,12 @@
 
 
 
+typedef struct agrega{
+  int quantidade;
+  float preco;
+} dados;
+
+#define N 1000
 #define permissoes 0600
 
 #define tamArtigo 16
