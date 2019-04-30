@@ -271,30 +271,30 @@ int main(int argc, char *argv[]) {
 
   abrir_log();
 
-  while(byteslidos != EOF) {   //TODO: ler mais do que um byte
+  while(byteslidos > 0) {   //TODO: ler mais do que um byte
 
     //TODO: mais do que 1 byte
-    if ((byteslidos = readline(0, buffer, 1)) < 0)
+    if ((byteslidos = readline(0, buffer, 1)) <= 0)
       break;
 
-      buffer[byteslidos - 1] = '\n';
+    buffer[byteslidos - 1] = '\n';
 
-      buffer[byteslidos] = 0;
+    buffer[byteslidos] = 0;
 
-      sscanf(buffer, "%s %s %s", letra, nome_codigo, preco_nome);
+    sscanf(buffer, "%s %s %s", letra, nome_codigo, preco_nome);
 
-      if(strcmp(letra, "i") == 0){
-          criaFicheiros(files, 3);
-          insereArtigo(preco_nome, nome_codigo);
-      }
+    if(strcmp(letra, "i") == 0){
+        criaFicheiros(files, 3);
+        insereArtigo(preco_nome, nome_codigo);
+    }
 
-      if(strcmp(letra, "n") == 0){
-          alteraNome(nome_codigo, preco_nome);
-      }
+    if(strcmp(letra, "n") == 0){
+        alteraNome(nome_codigo, preco_nome);
+    }
 
-      if(strcmp(letra, "p") == 0){
-          alteraPreco(nome_codigo, preco_nome);
-      }
+    if(strcmp(letra, "p") == 0){
+        alteraPreco(nome_codigo, preco_nome);
+    }
 
   }
 

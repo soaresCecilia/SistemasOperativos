@@ -48,7 +48,7 @@ int readline(int fildes, char *buf, int nbytes) {
       buf = buf + byteslidos; //aumenta a posição no buffer onde o caracter vai ser armazenado
     }
 
-    return (byteslidos != EOF) ? total : EOF;
+    return (byteslidos > 0) ? total : byteslidos;
 }
 
 /*
