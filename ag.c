@@ -8,15 +8,30 @@
 #include "aux.h"
 #include "debug.h"
 
-dados inicializaEstrutura() {
-  int n = 10000; //tornar dinamico
+dados inicializaEstrutura(int tam) {
 
-  dados info = calloc(n, sizeof(struct agrega));
+  dados info = calloc(tam, sizeof(struct agrega));
 
   return info;
 }
 
-void agregarVendas(dados info) {
+
+//Aumenta a estutura
+int aumentaEstrutura(dados *info, int tam){
+  int novotam = 2*tam;
+
+  *info = realloc(*info, (sizeof(struct agrega) * novotam));
+
+  for(int i = tam; i < novotam; i++) {
+    (*info)[i].quantidade = 0;
+    (*info)[i].preco = 0.0;
+  }
+
+  return novotam;
+}
+
+
+void agregarVendas(dados info, int *tam) {
   char buffer[2048];
   buffer[0] = 0;
   int byteslidos = 0,cod, quant;
@@ -24,25 +39,28 @@ void agregarVendas(dados info) {
 
 
     //TODO: ler mais do que 1 byte
-    while ((byteslidos = readline(STDIN_FILENO, buffer, 1)) > 0) {
+    while ((byteslidos = readline(0, buffer, 1)) > 0) {
         buffer[byteslidos - 1] = 0;
         sscanf(buffer, "%d %d %f", &cod, &quant, &montante);
-        info[cod].quantidade += quant;
-        info[cod].preco += montante;
-        DEBUG_MACRO("Montante %f\n", montante);
-        DEBUG_MACRO("Preço %f\n", info[cod].preco);
-        DEBUG_MACRO("Quantidade %d\n", info[cod].quantidade);
+        if(cod >= *tam) {
+          *tam = aumentaEstrutura(&info, *tam);
+        }
+        //quando o código ou a quantidade ou o preco não são válidos não agrega
+        if(cod >= 1 && quant >= 0 && montante >= 0.0) {
+          info[cod].quantidade += quant;
+          info[cod].preco += montante;
+        }
     }
 }
 
 
-void escreveStdout(dados info){
+void escreveStdout(dados info, int tam){
   char buffer[2048];
   buffer[0] = 0;
   int qtos, i = 0;
 
 
-  for(i = 0; i < 10000; i++){
+  for(i = 0; i < tam; i++){
 
     if(info[i].quantidade != 0) {
 
@@ -65,12 +83,13 @@ int main(int argc, char *argv[]) {
   buffer[0] = 0;
   //int byteslidos = 0;
   dados info = NULL;
+  int tam = 3;
 
-  info = inicializaEstrutura();
+  info = inicializaEstrutura(tam);
 
-  agregarVendas(info);
+  agregarVendas(info, &tam);
 
-  escreveStdout(info);
+  escreveStdout(info, tam);
 
   free(info);
 
