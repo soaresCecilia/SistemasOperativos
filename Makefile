@@ -1,24 +1,25 @@
 CC = gcc
 CFLAGS = -W -Wall -g
 
-all: so
-so: main.o ma.o
-	$(CC) $(CFLAGS) -o so main.o ma.o
+all: ma sv cv ag
 
-main.o: main.c ma.h
-	$(CC) $(CFLAGS) -c main.c
+ma: debug aux
+	$(CC) $(CFLAGS) -c ma.c -o ma
 
-ma.o: ma.c ma.h
-	$(CC) $(CFLAGS) -c ma.c
+sv: debug aux
+	$(CC) $(CFLAGS) -c sv.c -o sv
 
-##sv.o: sv.c sc.h
-##	$(CC) $(CFLAGS) -c sv.c
+cv: debug aux
+	$(CC) $(CFLAGS) -c cv.c -o cv
 
-##cv.o: cv.c cv.h
-##	$(CC) $(CFLAGS) -c cv.c
+ag: debug aux
+	$(CC) $(CFLAGS) -c ag.c -o ag
 
-##ag.o: ag.c ag.h
-##	$(CC) $(CFLAGS) -c ag.c
+debug:
+	$(CC) $(CFLAGS) -c debug.c
+
+aux: debug aux
+	$(CC) $(CFLAGS) -c aux.c
 
 clean:
-	rm -f so *.o
+	rm -f *.o ma sv cv ag
