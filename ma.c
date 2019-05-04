@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <string.h>
+#include <sys/wait.h>
 #include "debug.h"
 #include "aux.h"
 
@@ -151,7 +152,7 @@ Quando se pretende alterar um nome de um artigo que não existe o
 programa ignora essa pretensão.
 */
 int alteraNome(char *codigo, char *novoNome) {
-  int byteslidos = 0, linhaNome = 0, linhaAntiga = 0;
+  int linhaNome = 0, linhaAntiga = 0;
   int bytesEscritos = 0, flag = 0;
   char buffer[2048];
   float preco;
@@ -171,7 +172,7 @@ int alteraNome(char *codigo, char *novoNome) {
   if(!codExiste) return bytesEscritos;
 
   // TODO: RESOLVER SÓ LÊ 1 BYTE DE CADA VEZ, se ler tamArtigo dá erro
-  byteslidos = readline(fdArt, buffer, 1);
+  readline(fdArt, buffer, 1);
 
   sscanf(buffer, "%d %f", &linhaAntiga, &preco);
 
@@ -214,7 +215,7 @@ ignora essa pretensão.
 */
 int alteraPreco(char *codigo, char *novoPreco){
   char buffer[2048];
-  int byteslidos, bytesEscritos = 0, linha;
+  int bytesEscritos = 0, linha;
   float precoAntigo;
   buffer[0] = 0;
 
@@ -235,7 +236,7 @@ int alteraPreco(char *codigo, char *novoPreco){
   }
 
   // TODO: RESOLVER SÓ LÊ 1 BYTE DE CADA VEZ, se ler tamArtigo dá erro
-  byteslidos = readline(fdArt, buffer, 1);
+  readline(fdArt, buffer, 1);
 
   sscanf(buffer, "%d %f", &linha, &precoAntigo);
   buffer[0]= 0;
@@ -253,12 +254,15 @@ int alteraPreco(char *codigo, char *novoPreco){
 
   return bytesEscritos;
 }
+
 //Função que manda executar o agregador, recebendo o numero de bytes lidos inicialmente, e que atualiza a variavel global
 // do número de bytes lidos + os bytes lidos anteriormente
 
-int mandaAgregar(int nBytesLidosAGIni){
+
+void mandaAgregar(int nBytesLidosAGIni){
+
     int nbytes;
-    int status;
+    
     int byteslidos;
     char bufferino[2048];
     int fdVendas = open("vendas.txt", O_RDONLY);
@@ -272,9 +276,6 @@ int mandaAgregar(int nBytesLidosAGIni){
 
     int fdAgFileData = open("dataagregacao.txt", O_CREAT | O_WRONLY | O_TRUNC, permissoes);
     //fazer com que o filho nasça com o output o ficheiro data
-    dup2(fdAgFileData,1);
-    close(fdAgFileData);
-
 
   if (pipe(pf) < 0){
     perror("Pipe PaiFilho falhou");
@@ -289,15 +290,15 @@ int mandaAgregar(int nBytesLidosAGIni){
 
       case 0:
           //filho
-          //int exlp;
-          //char* pathtoag="ag";
+          dup2(fdAgFileData,1);
+          close(fdAgFileData);
           //fechar descritor de escrita no pipe por parte do filho
           close(pf[1]);
           //tornar o filho capaz de ler do pipe
           dup2(pf[0],0);
           close(pf[0]);
 
-          if(execlp("ag","ag",NULL)==-1){
+          if((execlp("./ag","./ag",NULL))==-1){
               perror("Erro na execucao do execlp");
               _exit(errno);
           }
@@ -305,36 +306,28 @@ int mandaAgregar(int nBytesLidosAGIni){
           _exit(errno);
 
       default:
-          //acrescentar uma funcao que gere nome para o path com a data tal como pretendido
-          //ver melhor se o filho/ agregador está a ller bem o pipe
-          //se estiver a ler mal, talvez seja pela falta de \n ou por estar a ler
-          // tudo misturado ... N deu para experimentar, porque o agregador não estava a funcionar
-          // ver o que se passa com agregador
           //pai
-
-
           //fechar descritor de leitura do pipe por parte do pai
           close(pf[0]);
 
+
           //escrever para o pipe
           while((byteslidos=readline(fdVendas,bufferino,1))>0){
+
+            bufferino[byteslidos-1]='\n';
+            bufferino[byteslidos]='\0';
             if(write(pf[1],bufferino,byteslidos)<0) {
                 perror("Erro na escrita do file para o pipe");
             }
           }
-
-
-
-          wait(&status);
+          close(pf[1]);
 
     }
 
-return (byteslidos + nBytesLidosAGIni);
 }
 
-
 //main
-int main(int argc, char *argv[]) {
+int main() {
   int byteslidos=1;
   char buffer[2048];
   buffer[0] = 0;
@@ -373,6 +366,9 @@ int main(int argc, char *argv[]) {
         alteraPreco(nome_codigo, preco_nome);
     }
 
+    if(strcmp(letra, "a") == 0){
+        mandaAgregar(0);
+    }
 
 
   }

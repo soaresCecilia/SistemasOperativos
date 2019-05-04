@@ -78,10 +78,8 @@ void escreveStdout(dados info, int tam){
 
 
 
-int main(int argc, char *argv[]) {
-  char buffer[2048];
-  buffer[0] = 0;
-
+int main() {
+  
   dados info = NULL;
   int tam = 100000;
 

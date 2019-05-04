@@ -59,8 +59,6 @@ Função que lê do pipe e que imprime o resultado no stdout.
 */
 void lePipeEspecifico(int fd) {
   int byteslidos = 0;
-  char processo[200];
-  processo[0] = 0 ;
   char buffer[1024];
   buffer[0] = 0;
 
@@ -143,7 +141,7 @@ void fechaPipeEspecifico(int fd) {
 
 
 //main
-int main(int argc, char *argv[]) {
+int main() {
 
   int fdEspecifico = criaPipeEspecifico();
 

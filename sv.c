@@ -19,8 +19,14 @@ stocks.txt. A função devolve o número de bytes escritos.
 */
 int insereStock(char*codigo, char*quantidade){
 
-	int fdStocks, codigoInt, quantidadeInt, bytesEscritos;
+	int fdArtigos, fdStocks, codigoInt, quantidadeInt, bytesEscritos;
 	char stocks[100];
+
+  fdArtigos = open("artigos.txt", O_RDONLY);
+  if(fdArtigos < 0){
+   perror("Erro a abrrir ficheiro stocks.txt");
+   _exit(errno);
+  }
 
 	fdStocks = open("stocks.txt", O_WRONLY | O_APPEND);
 	if(fdStocks < 0){
@@ -46,8 +52,14 @@ int insereStock(char*codigo, char*quantidade){
 
     //verificar se o artigo existe
 
-  	bytesEscritos = write(fdStocks, stocks, qtos);
+    if(existeCodigo(fdArtigos,codigoInt)==1){
+      	bytesEscritos = write(fdStocks, stocks, qtos);
+      }
+    else{
+      perror("Tentaram inserir um produto no stock com código inexistente ");
+      }
 
+    close(fdArtigos);
   	close(fdStocks);
 
   	return bytesEscritos;
@@ -79,7 +91,11 @@ int getStock_Preco(char *codigo, int fd) {
 
   int existeCod = existeCodigo(fdArt, codigoInt);
 
-  if(!existeCod) preco = 0.0;
+  if(!existeCod) {
+    
+    preco = 0.0;
+    quantidade = 0;
+  }
 
   bytesLidos = readline(fdArt, buffer, 1); //ver depois para ler mais bytes
 
@@ -315,83 +331,9 @@ int divideComandos(char *comandos, char *codigoArt, char *quant) {
    }
    quant[j] = 0;
 
-
-
    return conta;
 }
 
-//Função que manda executar o agregador, recebendo o numero de bytes lidos inicialmente, e que atualiza a variavel global
-// do número de bytes lidos + os bytes lidos anteriormente
-
-void mandaAgregar(int nBytesLidosAGIni){
-
-    int nbytes;
-    int status;
-    int byteslidos;
-    char bufferino[2048];
-    int fdVendas = open("vendas.txt", O_RDONLY);
-
-    if((nbytes = lseek(fdVendas, nBytesLidosAGIni, SEEK_SET) ) < 0){
-    perror("Erro no lseek");
-    _exit(errno);
-  }
-    //codigo do  para mandar fazer o agregador
-    int pf[2];
-
-    int fdAgFileData = open("dataagregacao.txt", O_CREAT | O_WRONLY | O_TRUNC, permissoes);
-    //fazer com que o filho nasça com o output o ficheiro data
-
-
-
-
-  if (pipe(pf) < 0){
-    perror("Pipe PaiFilho falhou");
-    _exit(errno);
-  }
-
-
-  switch(fork()) {
-      case -1:
-        perror("Fork falhou");
-        _exit(errno);
-
-      case 0:
-          //filho
-          dup2(fdAgFileData,1);
-          close(fdAgFileData);
-          //fechar descritor de escrita no pipe por parte do filho
-          close(pf[1]);
-          //tornar o filho capaz de ler do pipe
-          dup2(pf[0],0);
-          close(pf[0]);
-
-          if((execlp("./ag","./ag",NULL))==-1){
-              perror("Erro na execucao do execlp");
-              _exit(errno);
-          }
-
-          _exit(errno);
-
-      default:
-          //pai
-          //fechar descritor de leitura do pipe por parte do pai
-          close(pf[0]);
-
-
-          //escrever para o pipe
-          while((byteslidos=readline(fdVendas,bufferino,1))>0){
-
-            bufferino[byteslidos-1]='\n';
-            bufferino[byteslidos]='\0';
-            if(write(pf[1],bufferino,byteslidos)<0) {
-                perror("Erro na escrita do file para o pipe");
-            }
-          }
-          close(pf[1]);
-
-    }
-
-}
 
 /*
 Função que executa os comandos necessários para atualizar o stock e
@@ -407,13 +349,6 @@ void processaComandos(char buffer[], char *comandos, int fdCliente) {
   quant[0] = 0;
 
   conta = divideComandos(comandos, codigoArt, quant);
-
-
-  if(strcmp(comandos, "agregar\n") == 0) {
-
-        mandaAgregar(0);
-        return;
-      }
 
   if(conta > 1) {
       if(quant[0] == '-') {
@@ -442,9 +377,6 @@ void processaComandos(char buffer[], char *comandos, int fdCliente) {
   }
 
 }
-
-
-
 
 /*
 Função em que o servidor lê do pipe comum e escreve para um
@@ -496,7 +428,7 @@ void servidor(int fd) {
 }
 
 //main
-int main(int argc, char *argv[]) {
+int main() {
 
   const char *files[2] = {"stocks.txt", "vendas.txt"};
 
