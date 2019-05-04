@@ -137,7 +137,7 @@ int insereArtigo(char *preco, char *nome){
   write(STDOUT_FILENO, codigo, qtos);
 
   //insere no stocks.txt a quantidade a zero
-  insereStock(codigo, "0");
+  //insereStock(codigo, "0");
 
   close(fd);
 
@@ -269,24 +269,24 @@ int mandaAgregar(int nBytesLidosAGIni){
   }
     //codigo do  para mandar fazer o agregador
     int pf[2];
-      
+
     int fdAgFileData = open("dataagregacao.txt", O_CREAT | O_WRONLY | O_TRUNC, permissoes);
     //fazer com que o filho nasça com o output o ficheiro data
     dup2(fdAgFileData,1);
-    close(fdAgFileData); 
-  
+    close(fdAgFileData);
+
 
   if (pipe(pf) < 0){
     perror("Pipe PaiFilho falhou");
     _exit(errno);
   }
-  
+
 
   switch(fork()) {
       case -1:
         perror("Fork falhou");
         _exit(errno);
-      
+
       case 0:
           //filho
           //int exlp;
@@ -296,12 +296,12 @@ int mandaAgregar(int nBytesLidosAGIni){
           //tornar o filho capaz de ler do pipe
           dup2(pf[0],0);
           close(pf[0]);
-          
+
           if(execlp("ag","ag",NULL)==-1){
               perror("Erro na execucao do execlp");
               _exit(errno);
           }
-          
+
           _exit(errno);
 
       default:
@@ -311,11 +311,11 @@ int mandaAgregar(int nBytesLidosAGIni){
           // tudo misturado ... N deu para experimentar, porque o agregador não estava a funcionar
           // ver o que se passa com agregador
           //pai
-          
-          
+
+
           //fechar descritor de leitura do pipe por parte do pai
           close(pf[0]);
-          
+
           //escrever para o pipe
           while((byteslidos=readline(fdVendas,bufferino,1))>0){
             if(write(pf[1],bufferino,byteslidos)<0) {
@@ -326,7 +326,7 @@ int mandaAgregar(int nBytesLidosAGIni){
 
 
           wait(&status);
-      
+
     }
 
 return (byteslidos + nBytesLidosAGIni);
@@ -373,7 +373,7 @@ int main(int argc, char *argv[]) {
         alteraPreco(nome_codigo, preco_nome);
     }
 
-    
+
 
   }
 

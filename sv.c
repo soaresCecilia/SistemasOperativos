@@ -13,6 +13,45 @@
 
 
 
+/*
+Função que insere uma entrada (formato: código e quantidade) no ficheiro
+stocks.txt. A função devolve o número de bytes escritos.
+*/
+int insereStock(char*codigo, char*quantidade){
+
+	int fdStocks, codigoInt, quantidadeInt, bytesEscritos;
+	char stocks[100];
+
+	fdStocks = open("stocks.txt", O_WRONLY | O_APPEND);
+	if(fdStocks < 0){
+	 perror("Erro a abrrir ficheiro stocks.txt");
+	 _exit(errno);
+	}
+
+	codigoInt = atoi(codigo);
+
+	quantidadeInt = atoi(quantidade);
+
+	int qtos = sprintf(stocks, formatoStocks, codigoInt, quantidadeInt);
+
+	if(qtos < 0) {
+    	perror("Erro na função sprintf");
+    	_exit(errno);
+  	}
+
+  	qtos = strlen(stocks);
+
+  	DEBUG_MACRO("tamanho do formato %d\n",qtos );
+
+
+    //verificar se o artigo existe
+
+  	bytesEscritos = write(fdStocks, stocks, qtos);
+
+  	close(fdStocks);
+
+  	return bytesEscritos;
+}
 
 
 
@@ -48,7 +87,7 @@ int getStock_Preco(char *codigo, int fd) {
 
   sscanf(buffer, "%d %f", &cdg, &preco);
 
-  sprintf(buffer, "%7d %7.2f\n", quantidade, preco);
+  sprintf(buffer, formatoArtigo, quantidade, preco);
 
   int qtos = strlen(buffer);
 
@@ -276,7 +315,7 @@ int divideComandos(char *comandos, char *codigoArt, char *quant) {
    }
    quant[j] = 0;
 
-   
+
 
    return conta;
 }
@@ -285,7 +324,7 @@ int divideComandos(char *comandos, char *codigoArt, char *quant) {
 // do número de bytes lidos + os bytes lidos anteriormente
 
 void mandaAgregar(int nBytesLidosAGIni){
-    
+
     int nbytes;
     int status;
     int byteslidos;
@@ -298,24 +337,24 @@ void mandaAgregar(int nBytesLidosAGIni){
   }
     //codigo do  para mandar fazer o agregador
     int pf[2];
-      
+
     int fdAgFileData = open("dataagregacao.txt", O_CREAT | O_WRONLY | O_TRUNC, permissoes);
     //fazer com que o filho nasça com o output o ficheiro data
-    
-   
-  
+
+
+
 
   if (pipe(pf) < 0){
     perror("Pipe PaiFilho falhou");
     _exit(errno);
   }
-  
+
 
   switch(fork()) {
       case -1:
         perror("Fork falhou");
         _exit(errno);
-      
+
       case 0:
           //filho
           dup2(fdAgFileData,1);
@@ -325,23 +364,23 @@ void mandaAgregar(int nBytesLidosAGIni){
           //tornar o filho capaz de ler do pipe
           dup2(pf[0],0);
           close(pf[0]);
-          
+
           if((execlp("./ag","./ag",NULL))==-1){
               perror("Erro na execucao do execlp");
               _exit(errno);
           }
-          
+
           _exit(errno);
 
       default:
-          //pai    
+          //pai
           //fechar descritor de leitura do pipe por parte do pai
           close(pf[0]);
-          
-          
+
+
           //escrever para o pipe
           while((byteslidos=readline(fdVendas,bufferino,1))>0){
-            
+
             bufferino[byteslidos-1]='\n';
             bufferino[byteslidos]='\0';
             if(write(pf[1],bufferino,byteslidos)<0) {
@@ -349,13 +388,10 @@ void mandaAgregar(int nBytesLidosAGIni){
             }
           }
           close(pf[1]);
-      
+
     }
 
 }
-  
-   
-
 
 /*
 Função que executa os comandos necessários para atualizar o stock e
@@ -371,10 +407,10 @@ void processaComandos(char buffer[], char *comandos, int fdCliente) {
   quant[0] = 0;
 
   conta = divideComandos(comandos, codigoArt, quant);
-  
+
 
   if(strcmp(comandos, "agregar\n") == 0) {
-    
+
         mandaAgregar(0);
         return;
       }
@@ -389,9 +425,10 @@ void processaComandos(char buffer[], char *comandos, int fdCliente) {
         actualizaStock(codigoArt, quant);
       }
 
+  //rotina para imprimir no stdout
   stock = getQuantidade(codigoArt);
 
-  sprintf(buffer, "%7d\n", stock);
+  sprintf(buffer, "%d\n", stock);
 
   qtos = strlen(buffer);
 
@@ -452,8 +489,8 @@ void servidor(int fd) {
     }
 
      processaComandos(buffer, comandos, fdCliente);
-      
-    
+
+
 
   }
 }

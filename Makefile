@@ -4,16 +4,16 @@ CFLAGS = -W -Wall -g
 all: ma sv cv ag
 
 ma: debug aux
-	$(CC) $(CFLAGS) -c ma.c -o ma
+	$(CC) $(CFLAGS) ma.c aux.o debug.o -o ma
 
 sv: debug aux
-	$(CC) $(CFLAGS) -c sv.c -o sv
+	$(CC) $(CFLAGS) sv.c aux.o debug.o -o sv
 
 cv: debug aux
-	$(CC) $(CFLAGS) -c cv.c -o cv
+	$(CC) $(CFLAGS) cv.c aux.o debug.o -o cv
 
 ag: debug aux
-	$(CC) $(CFLAGS) -c ag.c -o ag
+	$(CC) $(CFLAGS) ag.c aux.o debug.o -o ag
 
 debug:
 	$(CC) $(CFLAGS) -c debug.c

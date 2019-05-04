@@ -86,48 +86,6 @@ int getQuantidade(char *codigo) {
   return quantidade;
 }
 
-
-/*
-Função que insere uma entrada (formato: código e quantidade) no ficheiro
-stocks.txt. A função devolve o número de bytes escritos.
-
-TODO: a função que insere um produto em stock deve criar o artigo caso ele não exista
-*/
-int insereStock(char*codigo, char*quantidade){
-
-	int fdStocks, codigoInt, quantidadeInt, bytesEscritos;
-	char stocks[100];
-
-	fdStocks = open("stocks.txt", O_WRONLY | O_APPEND);
-	if(fdStocks < 0){
-	 perror("Erro a abrrir ficheiro stocks.txt");
-	 _exit(errno);
-	}
-
-	codigoInt = atoi(codigo);
-
-	quantidadeInt = atoi(quantidade);
-
-	int qtos = sprintf(stocks, formatoStocks, codigoInt, quantidadeInt);
-
-	if(qtos < 0) {
-    	perror("Erro na função sprintf");
-    	_exit(errno);
-  	}
-
-  	qtos = strlen(stocks);
-
-  	DEBUG_MACRO("tamanho do formato %d\n",qtos );
-
-  	bytesEscritos = write(fdStocks, stocks, qtos);
-
-  	close(fdStocks);
-
-  	return bytesEscritos;
-}
-
-
-
 /*
 Função que verifica se o código introduzido existe no ficheiro.
 */

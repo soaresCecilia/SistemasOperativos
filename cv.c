@@ -69,7 +69,7 @@ void lePipeEspecifico(int fd) {
   if ((byteslidos = readline(fd, buffer, 1)) > 0) {
     buffer[byteslidos - 1] = '\n';
     buffer[byteslidos] = 0;
-    if(write(1, buffer, byteslidos) < 0) {
+    if(write(STDOUT_FILENO, buffer, byteslidos) < 0) {
       perror("Erro ao ler mensagem do pipe Especifico");
       _exit(errno);
     }
