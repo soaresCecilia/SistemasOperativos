@@ -14,6 +14,8 @@ typedef struct agrega{
 #define tamStocks 16
 #define tamVendas 24
 
+
+
 #define formatoArtigo "%7d %7.2f\n" //tem sete algarimos, um espaço mais sete algarimos(5 antes do ponto e 2 depois do ponto) e um \n
 #define formatoStocks "%7d %7d\n"
 #define formatoVendas "%7d %7d %7.2f\n"

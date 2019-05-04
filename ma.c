@@ -253,12 +253,89 @@ int alteraPreco(char *codigo, char *novoPreco){
 
   return bytesEscritos;
 }
+//Função que manda executar o agregador, recebendo o numero de bytes lidos inicialmente, e que atualiza a variavel global
+// do número de bytes lidos + os bytes lidos anteriormente
 
+int mandaAgregar(int nBytesLidosAGIni){
+    int nbytes;
+    int status;
+    int byteslidos;
+    char bufferino[2048];
+    int fdVendas = open("vendas.txt", O_RDONLY);
+
+    if((nbytes = lseek(fdVendas, nBytesLidosAGIni, SEEK_SET) ) < 0){
+    perror("Erro no lseek");
+    _exit(errno);
+  }
+    //codigo do  para mandar fazer o agregador
+    int pf[2];
+      
+    int fdAgFileData = open("dataagregacao.txt", O_CREAT | O_WRONLY | O_TRUNC, permissoes);
+    //fazer com que o filho nasça com o output o ficheiro data
+    dup2(fdAgFileData,1);
+    close(fdAgFileData); 
+  
+
+  if (pipe(pf) < 0){
+    perror("Pipe PaiFilho falhou");
+    _exit(errno);
+  }
+  
+
+  switch(fork()) {
+      case -1:
+        perror("Fork falhou");
+        _exit(errno);
+      
+      case 0:
+          //filho
+          //int exlp;
+          //char* pathtoag="ag";
+          //fechar descritor de escrita no pipe por parte do filho
+          close(pf[1]);
+          //tornar o filho capaz de ler do pipe
+          dup2(pf[0],0);
+          close(pf[0]);
+          
+          if(execlp("ag","ag",NULL)==-1){
+              perror("Erro na execucao do execlp");
+              _exit(errno);
+          }
+          
+          _exit(errno);
+
+      default:
+          //acrescentar uma funcao que gere nome para o path com a data tal como pretendido
+          //ver melhor se o filho/ agregador está a ller bem o pipe
+          //se estiver a ler mal, talvez seja pela falta de \n ou por estar a ler
+          // tudo misturado ... N deu para experimentar, porque o agregador não estava a funcionar
+          // ver o que se passa com agregador
+          //pai
+          
+          
+          //fechar descritor de leitura do pipe por parte do pai
+          close(pf[0]);
+          
+          //escrever para o pipe
+          while((byteslidos=readline(fdVendas,bufferino,1))>0){
+            if(write(pf[1],bufferino,byteslidos)<0) {
+                perror("Erro na escrita do file para o pipe");
+            }
+          }
+
+
+
+          wait(&status);
+      
+    }
+
+return (byteslidos + nBytesLidosAGIni);
+}
 
 
 //main
 int main(int argc, char *argv[]) {
-  int byteslidos = 0;
+  int byteslidos=1;
   char buffer[2048];
   buffer[0] = 0;
   char letra[2];
@@ -295,6 +372,8 @@ int main(int argc, char *argv[]) {
     if(strcmp(letra, "p") == 0){
         alteraPreco(nome_codigo, preco_nome);
     }
+
+    
 
   }
 

@@ -87,7 +87,7 @@ void cliente(int fdComum, int fdEspecifico){
   buffer[0] = 0;
   char aux[1024];
   aux[0] = 0;
-  int byteslidos = 0;
+  int byteslidos = 1;
 
   int pid = getpid();
 

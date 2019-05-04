@@ -36,15 +36,15 @@ void agregarVendas(dados info, int *tam) {
   buffer[0] = 0;
   int byteslidos = 0,cod, quant;
   float montante;
-
+    
 
     //TODO: ler mais do que 1 byte
     while ((byteslidos = readline(0, buffer, 1)) > 0) {
-        buffer[byteslidos - 1] = 0;
+        
         sscanf(buffer, "%d %d %f", &cod, &quant, &montante);
-        if(cod >= *tam) {
+       /* if(cod >= *tam) {
           *tam = aumentaEstrutura(&info, *tam);
-        }
+        }*/
         //quando o código ou a quantidade ou o preco não são válidos não agrega
         if(cod >= 1 && quant >= 0 && montante >= 0.0) {
           info[cod].quantidade += quant;
@@ -81,9 +81,9 @@ void escreveStdout(dados info, int tam){
 int main(int argc, char *argv[]) {
   char buffer[2048];
   buffer[0] = 0;
-  //int byteslidos = 0;
+
   dados info = NULL;
-  int tam = 3;
+  int tam = 100000;
 
   info = inicializaEstrutura(tam);
 
