@@ -10,7 +10,7 @@ Debuggador do programa.
 /**
 \brief Macro que habilita o debug.
 */
-#define WITH_DEBUG 0
+#define WITH_DEBUG 1
 
 /**
 \brief Macro que define o comportamento do debug macro. Caso o debug esteja
@@ -27,7 +27,7 @@ habilitado, escreve para o ficheiro uma mensagem. Caso contrário, não faz nada
   #define DEBUG_MACRO(...)
 #endif
 
-int abrir_log();
+int abrir_log(const char *nome_ficheiro);
 
 void fechar_log();
 
