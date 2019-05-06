@@ -33,7 +33,7 @@ void insereNome(char *nome){
   if(mywrite(fd, string, qtos) < 0) {
     perror("Erro ao escrever no ficheiro strings na função insereNome.");
     close(fd);
-    return;
+    _exit(errno);
   }
 
   free(nome_str);
@@ -161,14 +161,23 @@ void alteraNome(char *codigo, char *novoNome) {
 
   int codigoInt = atoi(codigo);
 
+  DEBUG_MACRO("Codigo %d\n", codigoInt);
+
   int fdArt = myopen("artigos", O_RDWR);
   if(fdArt < 0){
     perror("Erro ao abrir o ficheiro artigos na função alteraNome.");
     _exit(errno);
   }
 
+  if ((lseek(fdArt,(codigoInt - 1) * tamArtigo , SEEK_SET)) < 0) {
+    perror("Erro no lseek a partir do fim na função existeCodigo.");
+    return;
+  }
+
   //Se o artigo não existe não se faz nada.
   int codExiste = existeCodigo(fdArt, codigoInt, tamArtigo);
+
+  DEBUG_MACRO("Código existe? %d\n", codExiste);
 
   if(!codExiste) {
     close(fdArt);
@@ -177,6 +186,8 @@ void alteraNome(char *codigo, char *novoNome) {
 
   // TODO: RESOLVER SÓ LÊ 1 BYTE DE CADA VEZ, se ler tamArtigo dá erro
   readline(fdArt, buffer, 1);
+
+  DEBUG_MACRO("Leu dos artigos Buffer %s\n", buffer);
 
   sscanf(buffer, "%d %f", &linhaAntiga, &preco);
 
@@ -215,13 +226,18 @@ ignora essa pretensão.
 */
 void alteraPreco(char *codigo, char *novoPreco){
   char buffer[2048];
-  int linha;
+  int linha, nbytes;
   float precoAntigo;
   buffer[0] = 0;
 
+
   int codigoInt = atoi(codigo);
+  DEBUG_MACRO("Codigo %d\n", codigoInt);
 
   float preco = atof(novoPreco);
+
+  //não aceita preços negativos
+  if(preco < 0) return;
 
   int fdArt = myopen("artigos", O_RDWR);
   if(fdArt < 0){
@@ -237,11 +253,13 @@ void alteraPreco(char *codigo, char *novoPreco){
 
   else {
       //já está na linha do artigo pretendido
-      if (lseek (fdArt, (codigoInt-1) * tamArtigo, SEEK_SET) < 0) {
+      if ((nbytes = lseek (fdArt, (codigoInt-1) * tamArtigo, SEEK_SET)) < 0) {
         perror("Erro ao fazer lseek na função alteraPreco.");
         close(fdArt);
         return;
       }
+
+      DEBUG_MACRO("Quantos bytes leu para achar a linha do artigo %d\n", nbytes);
 
       // TODO: RESOLVER SÓ LÊ 1 BYTE DE CADA VEZ, se ler tamArtigo dá erro
       if (readline(fdArt, buffer, 1) < 0) {
@@ -253,7 +271,18 @@ void alteraPreco(char *codigo, char *novoPreco){
       sscanf(buffer, "%d %f", &linha, &precoAntigo);
       buffer[0]= 0;
 
+      DEBUG_MACRO("Linha %d Preço antigo %f\n", linha, precoAntigo);
+
       sprintf(buffer, formatoArtigo, linha, preco);
+
+      DEBUG_MACRO("Buffer %s\n", buffer);
+
+
+      if (lseek(fdArt, (codigoInt-1) * tamArtigo, SEEK_SET) < 0) {
+        perror("Erro ao fazer lseek na função alteraPreco.");
+        close(fdArt);
+        return;
+      }
 
       if (mywrite(fdArt, buffer, tamArtigo) < 0) {
         perror("Erro ao escrever em artigos na função alteraPreco.");
@@ -355,12 +384,12 @@ void enviaSinalSv(){
 
   int fdSv = myopen("servidorPid", O_RDONLY);
   if (fdSv < 0) {
-    perror("Erro ao ler o ficheiro do servidorPid");
-    _exit(errno);
+    DEBUG_MACRO("Erro ao ler o ficheiro do servidorPid.\n");
+    return;
   }
 
   if (readline(fdSv, buffer, 1) < 0) { //ler mais do que 1 byte;
-    perror("Erro ao ler a linha do ficheiro servidorPid");
+    DEBUG_MACRO("Erro ao ler a linha do ficheiro servidorPid\n");
     close(fdSv);
     return;
   }
@@ -406,22 +435,32 @@ int main() {
 
     sscanf(buffer, "%s %s %s", letra, nome_codigo, preco_nome);
 
-    if(strcmp(letra, "i") == 0){
+    if(strcmp(letra, "i") == 0) {
+      if(strlen(preco_nome) > 7) {
+        DEBUG_MACRO("Produto: %s com preço num formato maior do que o permitido: %s.\n", nome_codigo, preco_nome);
+      }
+      else {
         insereArtigo(preco_nome, nome_codigo);
         enviaSinalSv();
+      }
     }
 
-    if(strcmp(letra, "n") == 0){
-        alteraNome(nome_codigo, preco_nome);
+    if(strcmp(letra, "n") == 0) {
+      if(strlen(nome_codigo) > 7) {
+        DEBUG_MACRO("Código num formato maior do que o permitido: %s.\n", nome_codigo);
+      }
+      else alteraNome(nome_codigo, preco_nome);
     }
 
     if(strcmp(letra, "p") == 0){
-        alteraPreco(nome_codigo, preco_nome);
+        if(strlen(preco_nome) > 7 || strlen(nome_codigo) > 7) {
+          DEBUG_MACRO("Produto com código: %s com preço num formato superior ao permitido: %s.\n", nome_codigo, preco_nome);
+        }
+        else alteraPreco(nome_codigo, preco_nome);
     }
 
-    if(strcmp(letra, "a") == 0){
+    if(strcmp(letra, "a") == 0)
         mandaAgregar(0);
-    }
 
   }
 
