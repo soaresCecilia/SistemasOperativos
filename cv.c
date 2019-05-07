@@ -53,6 +53,10 @@ void cliente(int fdComum, int fdEspecifico){
     if ((byteslidos = readline(STDIN_FILENO, buffer, 1)) < 0)
       break;
 
+    if(byteslidos > PIPE_BUF) {
+        perror("Mensagem superior ao tamanho do pipe.");
+        continue;
+    }
     //tratamento do pid do processo
     sprintf(aux, "p%d@", pid);
 

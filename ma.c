@@ -459,7 +459,7 @@ int main() {
         else alteraPreco(nome_codigo, preco_nome);
     }
 
-    if(strcmp(letra, "a") == 0)
+    if(strcmp(letra, "a") == 0) //Aqui tb tem de se ter em atenção que o tamanho do preço não pode exceder
         mandaAgregar(0);
 
   }

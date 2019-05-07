@@ -10,13 +10,21 @@ typedef struct agrega{
 
 
 #define TRUE  1
-#define PERMISSOES 0660
+
+/*
+Macro para permitir blindar os ficheiros eficientemente quando são criados.
+*/
+#define PERMISSOES 0640
 
 #define tamArtigo 16
 #define tamStocks 16
 #define tamVendas 24
 
-#define formatoArtigo "%7d %7.2f\n" //tem sete algarimos, um espaço mais sete algarimos(5 antes do ponto e 2 depois do ponto) e um \n
+#define tamQuantidade  7
+#define tamPreco       7
+#define tamCodigo      7
+
+#define formatoArtigo "%7d %7.2f\n"
 #define formatoStocks "%7d %7d\n"
 #define formatoVendas "%7d %7d %7.2f\n"
 

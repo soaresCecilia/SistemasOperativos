@@ -48,6 +48,13 @@ void insereStock(char*codigo, char*quantidade){
 	 _exit(errno);
 	}
 
+	//quando querem inserir uma quantidade superior à do formato
+	if(strlen(quantidade) > tamQuantidade || strlen(codigo) > tamCodigo){
+		close(fdArtigos);
+		close(fdStocks);
+		return;
+	}
+
 	codigoInt = atoi(codigo);
 
 	quantidadeInt = atoi(quantidade);
@@ -56,25 +63,19 @@ void insereStock(char*codigo, char*quantidade){
 
   int	qtos = strlen(stocks);
 
-  	DEBUG_MACRO("tamanho do formato %d    codigo do artigo %d\n",qtos, codigoInt);
+  DEBUG_MACRO("tamanho do formato %d    codigo do artigo %d\n",qtos, codigoInt);
 
-    if(existeCodigo(fdArtigos,codigoInt, tamArtigo)){
+  if(existeCodigo(fdArtigos,codigoInt, tamArtigo)){
 			if ((bytesEscritos = mywrite(fdStocks, stocks, qtos)) < 0){
 				perror("Erro ao escrever no ficheiro dos stocks na função insereStock.");
 				close(fdArtigos);
 				close(fdStocks);
 				return;
 			}
-		}
-		else {
-			perror("Tentaram inserir um produto no stock com código inexistente.");
-			close(fdArtigos);
-			close(fdStocks);
-			return;
-		}
+	}
 
-    close(fdArtigos);
-  	close(fdStocks);
+  close(fdArtigos);
+  close(fdStocks);
 }
 
 /*
@@ -137,7 +138,6 @@ havido uma venda ou inserção em stock de um artigo.
 void actualizaStock(char* codigo, char* quantidade){
 	int fdStocks, quantidadeInt, codigoInt, nbytes, quantidadeAtual;
   int bytesEscritos, bytesLidos, sinal, quantidadeTotal;
-	int flag = 0;
 	char buffer[2048];
 	char codigoArt[700], quantidadeArt[700];
 	char c = *quantidade;
@@ -146,64 +146,71 @@ void actualizaStock(char* codigo, char* quantidade){
 
 	else sinal = 1;
 
+	//verifica se a quantidade e o código cumprem os tamanhos permitidos
+	if(strlen(quantidade) > tamQuantidade || strlen(codigo) > tamCodigo){
+		return;
+	}
+
 	if ((fdStocks = myopen("stocks", O_RDWR)) < 0) {
 	 	perror("Erro ao abrir ficheiro stocks na função actualizaStock.");
 		_exit(errno);
 	}
 
-  //caso o artigo já existe em stock
-	while((bytesLidos = readline(fdStocks, buffer, 1)) > 0) {
-		sscanf(buffer,"%s %s", codigoArt, quantidadeArt);
+	codigoInt = atoi(codigo);
 
-    //já leu a linha que quero mudar
-		if(strcmp(codigo, codigoArt) == 0){
-			buffer[0] = 0;
-			codigoInt = atoi(codigo);
-			quantidadeInt = abs(atoi(quantidade));
-			quantidadeTotal = atoi(quantidadeArt);
 
-      if(sinal == -1){
-        if(quantidadeTotal < quantidadeInt) {
-          quantidadeAtual = 0;
-        }
-        else quantidadeAtual = quantidadeTotal - quantidadeInt;
-      }
-
-      else quantidadeAtual = quantidadeTotal + quantidadeInt;
-
-      //verifica onde está
-      if((nbytes = lseek(fdStocks, 0, SEEK_CUR)) < 0) {
-        perror("Erro ao fazer lseek na função actualizaStock.");
-				close(fdStocks);
-				return;
-			}
-
-      //linha onde está o artigo no stocks
-      nbytes = nbytes - tamStocks;
-
-      //posiciona-se na linha que pretende atualizar
-      if((nbytes = lseek(fdStocks, nbytes, SEEK_SET)) < 0) {
-        perror("Erro no 2.º lseek na função actualizaStock.");
-				close(fdStocks);
-				return;
-			}
-
-			sprintf(buffer, formatoStocks, codigoInt, quantidadeAtual);
-
-      int qtos = strlen(buffer);
-
-      if ((bytesEscritos = mywrite(fdStocks, buffer, qtos)) < 0) {
-				perror("Erro ao escrever no ficheiro stocks na função actualizaStock.");
-				close(fdStocks);
-				return;
-			}
-
-      flag = 1;
-		}
+	//artigo não existe em stock significa que também não existe nos artigos
+	if (!existeCodigo(fdStocks, codigoInt, tamStocks)) {
+		close(fdStocks);
+		return;
 	}
 
-  //significa que não existia o artigo em stock e ele vai verificar se o artigo existe
-	if(flag == 0) insereStock(codigo, "0");
+	else { //artigo existe em stock
+		if ((bytesLidos = readline(fdStocks, buffer, 1)) < 0) {
+			perror("Erro ao ler do ficheiro stocks na função actualizaStock.");
+		}
+		sscanf(buffer,"%s %s", codigoArt, quantidadeArt);
+
+
+		quantidadeInt = abs(atoi(quantidade));
+		quantidadeTotal = atoi(quantidadeArt);
+
+		if(sinal == -1){
+			if(quantidadeTotal < quantidadeInt) {
+				quantidadeAtual = 0;
+			}
+			else quantidadeAtual = quantidadeTotal - quantidadeInt;
+		}
+
+		else quantidadeAtual = quantidadeTotal + quantidadeInt;
+
+		//verifica onde está
+		if((nbytes = lseek(fdStocks, 0, SEEK_CUR)) < 0) {
+			perror("Erro ao fazer lseek na função actualizaStock.");
+			close(fdStocks);
+			return;
+		}
+
+		//linha onde está o artigo no stocks
+		nbytes = nbytes - tamStocks;
+
+		//posiciona-se na linha que pretende atualizar
+		if((nbytes = lseek(fdStocks, nbytes, SEEK_SET)) < 0) {
+			perror("Erro no 2.º lseek na função actualizaStock.");
+			close(fdStocks);
+			return;
+		}
+
+		sprintf(buffer, formatoStocks, codigoInt, quantidadeAtual);
+
+		int qtos = strlen(buffer);
+
+		if ((bytesEscritos = mywrite(fdStocks, buffer, qtos)) < 0) {
+			perror("Erro ao escrever no ficheiro stocks na função actualizaStock.");
+			close(fdStocks);
+			return;
+		}
+	}
 
 	close(fdStocks);
 
@@ -228,6 +235,12 @@ void insereVenda(char *codigo, char *quantidade){
 	if(fdVendas < 0) {
 	 	perror("Erro a abrir ficheiro vendas");
 		_exit(errno); // TODO: ALTERAR
+	}
+
+	//se o tamanho dos comandos for superior ao permitido
+	if(strlen(quantidade) > tamQuantidade || strlen(codigo) > tamCodigo){
+		close(fdVendas);
+		return;
 	}
 
 	codigoInt = atoi(codigo);
@@ -284,8 +297,6 @@ void insereVenda(char *codigo, char *quantidade){
 		close(fdVendas);
 		return;
 	}
-
-  actualizaStock(codigo, quantidade);
 
   close(fdArtigos);
 
@@ -361,6 +372,7 @@ void processaComandos(char buffer[], char *comandos, int fdCliente) {
       if(quant[0] == '-') {
         sinal = -1;
         insereVenda(codigoArt, quant);
+				actualizaStock(codigoArt, quant);
       }
 
       else if(sinal == 1) {
@@ -405,21 +417,43 @@ void criaServidorPid() {
 	close(fd);
 }
 
+
+/*
+Função que ignora os erros ECONNRESET quando é chamada a função
+readline.
+A função retorna o número de bytes lidos.
+*/
+int myreadServidor(int fildes, void *buf, int nbytes) {
+  int byteslidos;
+
+    while(TRUE){
+        byteslidos = readline(fildes, buf, nbytes);
+
+        if (byteslidos > 0) {
+          return byteslidos;
+        }
+        else if (errno != ECONNRESET && errno != EEXIST) {
+					DEBUG_MACRO("PORRA %d %d\n", errno, byteslidos);
+          return byteslidos;
+        }
+    }
+}
+
 /*
 Função em que o servidor lê do pipe comum e escreve para um
 pipe com nome para responder especificamente a um determinado cliente.
 */
-void servidor(int fd) {
+void servidor(int fdComum) {
   char buffer[1024];
   buffer[0] = 0;
   char processo[200];
   processo[0] = 0;
-  char comandos[200];
+  char comandos[1024];
   comandos[0] = 0;
   int byteslidos, i, j, fdCliente;
 
   // TODO: ler mais do que um byte de cada vez
-  while((byteslidos = readline(fd, buffer, 1)) > 0) {
+  while((byteslidos = myreadServidor(fdComum, buffer, 1)) > 0) {
 
     	DEBUG_MACRO("Buffer pipe Cliente %s\n", buffer);
 
@@ -435,11 +469,10 @@ void servidor(int fd) {
     	comandos[j] = '\n';
     	comandos[++j] = 0;
 
-			int qtos = strlen(comandos);
-
-			if(qtos > PIPE_BUF) {
-				perror("Mensagem superior ao tamanho do pipe comum.");
-			}
+			if(strlen(comandos) > PIPE_BUF) {
+	        perror("Mensagem superior ao tamanho do pipe.");
+					continue;
+	    }
 
     	DEBUG_MACRO("Processo %s Comandos %s\n", processo, comandos);
 

@@ -129,27 +129,31 @@ int getQuantidade(char *codigo) {
 
   int codigoInt = atoi(codigo);
 
+  DEBUG_MACRO("Código é %d\n", codigoInt);
+
   int fdStocks = myopen("stocks", O_RDONLY);
 	if(fdStocks < 0){
 	 perror("Erro ao abrir ficheiro stocks");
    _exit(errno);
 	}
 
-	if (lseek(fdStocks, 0, SEEK_SET) < 0){
-		perror("erro no lseek na função getQuantidade.");
+	if (!existeCodigo(fdStocks, codigoInt, tamStocks)) {
     close(fdStocks);
     return quantidade;
-  	}
-
-  while((bytesLidos = readline(fdStocks, buffer, 1)) > 0) {
-    sscanf(buffer,"%d %d", &codigoArt, &quantidade);
-
-    //já leu a linha que quero mudar
-    if(codigoInt == codigoArt){
-      return quantidade;
-    }
-    else quantidade = 0; //o código não existe nos stocks
   }
+
+
+  bytesLidos = readline(fdStocks, buffer, 1);
+    if(bytesLidos < 0) {
+      perror("Erro ao ler dos stocks");
+      close(fdStocks);
+      return -1;
+    }
+
+  DEBUG_MACRO("Conteúdo do buffer getQuantidade %s\n", buffer);
+
+  sscanf(buffer,"%d %d", &codigoArt, &quantidade);
+
 
   return quantidade;
 }
