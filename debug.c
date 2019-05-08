@@ -16,8 +16,8 @@ FILE * fp;
 \brief Função que abre um ficheiro de log.
 @returns retorna 1 se deu erro e 0 se foi bem sucedido.
 */
-int abrir_log() {
-  fp = fopen("log.txt", "a");
+int abrir_log(const char *nome_ficheiro) {
+  fp = fopen(nome_ficheiro, "a");
   if (fp == NULL) {
     printf("erro ao abrir ficheiro do log %d\n", errno);
     return 1;

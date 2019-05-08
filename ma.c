@@ -6,46 +6,45 @@
 #include <string.h>
 #include <sys/wait.h>
 #include <time.h> 
+#include <signal.h>
 #include "debug.h"
 #include "aux.h"
 
-//TODO: no altera nome e preco o que acontece quando o artigo
-//não existe ou não existe o ficheiro artigos.
-
-//Quando o artigo tem o mesmo nome e preco diferentes o que fazer.
 
 
 /*
 Insere um nome de um artigo no ficheiro strings, caso o mesmo não exista.
 A inserção é feita um nome por linha do ficheiro.
 */
-int insereNome(char *nome){
-  int fd, bytesEscritos = 0;
+void insereNome(char *nome){
+  int fd;
   char *nome_str = malloc(strlen(nome) + 2); //o \0 e o \n
   strcpy(nome_str, nome);
   char *string = strcat(nome_str, "\n");
 
-  fd = open("strings.txt", O_RDWR | O_APPEND);
+  fd = myopen("strings", O_RDWR | O_APPEND);
 
   if(fd < 0) {
-    perror("Erro ao abrir o ficheiro strings.txt");
+    perror("Erro ao abrir o ficheiro strings na função insereNome.");
     _exit(errno);
   }
 
   int qtos = strlen(string);
 
-  bytesEscritos = write(fd, string, qtos);
+  if(mywrite(fd, string, qtos) < 0) {
+    perror("Erro ao escrever no ficheiro strings na função insereNome.");
+    close(fd);
+    _exit(errno);
+  }
 
   free(nome_str);
 
   close(fd);
-
-  return bytesEscritos;
 }
 
 
 /*
-Devolve o número de linhas lidas do ficheiro strings.txt até encontrar
+Devolve o número de linhas lidas do ficheiro strings até encontrar
 a string str ou, caso não encontre, devolve o número seguinte à última
 linha antes do EOF do referido ficheiro.
 */
@@ -55,15 +54,16 @@ int contaLinhasStr(char *str, int *flag) {
   buffer[0] = 0;
   *flag = -1;
 
-  fdStr = open("strings.txt", O_RDONLY);
+  fdStr = myopen("strings", O_RDONLY);
   if (fdStr < 0){
-    perror("Erro ao abrir o ficheiro strings");
+    perror("Erro ao abrir o ficheiro strings na função contaLinhasStr.");
     _exit(errno);
   }
 
   if ((byte = lseek (fdStr, 0, SEEK_SET)) < 0) {
-    perror("Erro ao fazer lseek");
-    _exit(errno);
+    perror("Erro ao fazer lseek na função contaLinhasStr.");
+    close(fdStr);
+    return linha;
   }
 
   DEBUG_MACRO("Em que byte abriu o strings %d\n", byte);
@@ -91,16 +91,14 @@ int contaLinhasStr(char *str, int *flag) {
 
 
 /*
-Função que insere um artigo no ficheiro artigos.txt. É inserido um artigo
+Função que insere um artigo no ficheiro artigos. É inserido um artigo
 por linha, sendo que cada artigo é composto por um inteiro que representa
-a linha que identifica o seu nome no ficheiro strings.txt e um float, com
-duas casa decimais, que indica o seu preço. A função devolve o número de
-bytes escritos no ficheiro artigos.txt.
-Sempre que é inserido um artigo insere-se o mesmo no ficheiro stock com
-a quantidade a zero.
+a linha que identifica o seu nome no ficheiro strings e um float, com
+duas casa decimais, que indica o seu preço. A função devolve o código do
+artigo.
 */
 int insereArtigo(char *preco, char *nome){
-  int fd, bytesEscritos, linha = 0, byte = 0;
+  int fd, linha = 0, byte = 0, codigoInt = -1;
   char codigo[100];
   int flag = 0;
   char artigo[100];
@@ -112,39 +110,42 @@ int insereArtigo(char *preco, char *nome){
 
   sprintf(artigo, formatoArtigo, linha, preco_float);
 
-  DEBUG_MACRO("Tamanho da string artigos %d\n", qtos);
-
-  fd = open("artigos.txt", O_WRONLY | O_APPEND);
+  fd = myopen("artigos", O_WRONLY | O_APPEND);
 
   if(fd < 0) {
-    perror("Erro ao abrir o ficheiro");
-    _exit(0);
+    perror("Erro ao abrir o ficheiro na função insereArtigo.");
+    _exit(errno);
   }
 
   int qtos = strlen(artigo);
 
-  bytesEscritos = write(fd, artigo, qtos);
-
-  if ((byte = lseek (fd, 0, SEEK_CUR)) < 0) {
-    perror("Erro ao fazer lseek");
-    _exit(errno);
+  if (mywrite(fd, artigo, qtos) < 0) {
+    perror("Erro ao escrever no ficheiro artigos na função insereArtigo.");
+    close(fd);
+    return codigoInt;
   }
 
-  int codigoInt = byte / tamArtigo;
+  if ((byte = lseek (fd, 0, SEEK_CUR)) < 0) {
+    perror("Erro ao fazer lseek na função insereArtigo.");
+    close(fd);
+    return codigoInt;
+  }
+
+  codigoInt = byte / tamArtigo;
 
   sprintf(codigo, "%d\n", codigoInt);
 
   qtos = strlen(codigo);
 
-  write(STDOUT_FILENO, codigo, qtos);
-
-  //insere no stocks.txt a quantidade a zero
-  //insereStock(codigo, "0");
+  if (mywrite(STDOUT_FILENO, codigo, qtos) < 0) {
+    perror("Erro ao escrever no ecran na função insereArtigo.");
+    close(fd);
+    return codigoInt;
+  }
 
   close(fd);
 
-  return bytesEscritos;
-
+  return codigoInt;
 }
 
 /*
@@ -152,28 +153,42 @@ Função que altera a referência do nome de um determinado artigo.
 Quando se pretende alterar um nome de um artigo que não existe o
 programa ignora essa pretensão.
 */
-int alteraNome(char *codigo, char *novoNome) {
+void alteraNome(char *codigo, char *novoNome) {
   int linhaNome = 0, linhaAntiga = 0;
-  int bytesEscritos = 0, flag = 0;
+  int flag = 0;
   char buffer[2048];
   float preco;
   buffer[0] = 0;
 
   int codigoInt = atoi(codigo);
 
-  int fdArt = open("artigos.txt", O_RDWR);
+  DEBUG_MACRO("Codigo %d\n", codigoInt);
+
+  int fdArt = myopen("artigos", O_RDWR);
   if(fdArt < 0){
-    perror("Erro ao abrir o ficheiro artigos");
+    perror("Erro ao abrir o ficheiro artigos na função alteraNome.");
     _exit(errno);
   }
 
-  //Se o artigo não existe não se faz nada.
-  int codExiste = existeCodigo(fdArt, codigoInt);
+  if ((lseek(fdArt,(codigoInt - 1) * tamArtigo , SEEK_SET)) < 0) {
+    perror("Erro no lseek a partir do fim na função existeCodigo.");
+    return;
+  }
 
-  if(!codExiste) return bytesEscritos;
+  //Se o artigo não existe não se faz nada.
+  int codExiste = existeCodigo(fdArt, codigoInt, tamArtigo);
+
+  DEBUG_MACRO("Código existe? %d\n", codExiste);
+
+  if(!codExiste) {
+    close(fdArt);
+    return;
+  }
 
   // TODO: RESOLVER SÓ LÊ 1 BYTE DE CADA VEZ, se ler tamArtigo dá erro
   readline(fdArt, buffer, 1);
+
+  DEBUG_MACRO("Leu dos artigos Buffer %s\n", buffer);
 
   sscanf(buffer, "%d %f", &linhaAntiga, &preco);
 
@@ -189,86 +204,115 @@ int alteraNome(char *codigo, char *novoNome) {
 
   //volta ao inicio da linha que quer alterar
   if (lseek (fdArt, (codigoInt-1) * tamArtigo, SEEK_SET) < 0) {
-    perror("Erro ao fazer lseek");
-    _exit(errno);
+    perror("Erro ao fazer lseek na função alteraNome.");
+    close(fdArt);
+    return;
   }
 
-  bytesEscritos = write(fdArt, buffer, tamArtigo);
+  if (mywrite(fdArt, buffer, tamArtigo) < 0) {
+    perror("Erro ao escrever em artigos na função alteraNome.");
+    close(fdArt);
+    return;
+  }
 
   close(fdArt);
-
-  DEBUG_MACRO("Buffer %s byteslidos %d\n", buffer, byteslidos);
-  DEBUG_MACRO("Linha nova %7d\n", linhaNome);
-  DEBUG_MACRO("Linha nova %7d preco%7.2f\n", linhaNome, preco);
-  DEBUG_MACRO("Flag %d\n", flag);
-  DEBUG_MACRO("Linha nova %7d preco%7.2f\n", linhaNome, preco );
-  DEBUG_MACRO("linha Antiga%7d Preco%7.2f\n", linhaAntiga, preco);
-
-  return bytesEscritos;
 }
 
 
 /*
-Função que altera o preço de um artigo no fiheiro artigos.txt.
+Função que altera o preço de um artigo no fiheiro artigos.
 No caso de se pretender alterar o preco de um artigo cujo código
 não existe, o programa não faz qualquer alteração, simplesmente
 ignora essa pretensão.
 */
-int alteraPreco(char *codigo, char *novoPreco){
+void alteraPreco(char *codigo, char *novoPreco){
   char buffer[2048];
-  int bytesEscritos = 0, linha;
+  int linha, nbytes;
   float precoAntigo;
   buffer[0] = 0;
 
+
   int codigoInt = atoi(codigo);
+  DEBUG_MACRO("Codigo %d\n", codigoInt);
 
   float preco = atof(novoPreco);
 
-  int fdArt = open("artigos.txt", O_RDWR);
+  //não aceita preços negativos
+  if(preco < 0) return;
+
+  int fdArt = myopen("artigos", O_RDWR);
   if(fdArt < 0){
-    perror("Erro ao abrir o ficheiro artigos");
+    perror("Erro ao abrir o ficheiro artigos na função alteraPreco.");
     _exit(errno);
   }
-
-  //já está na linha do artigo pretendido
-  if (lseek (fdArt, (codigoInt-1) * tamArtigo, SEEK_SET) < 0) {
-    perror("Erro ao fazer lseek");
-    _exit(errno);
-  }
-
-  // TODO: RESOLVER SÓ LÊ 1 BYTE DE CADA VEZ, se ler tamArtigo dá erro
-  readline(fdArt, buffer, 1);
-
-  sscanf(buffer, "%d %f", &linha, &precoAntigo);
-  buffer[0]= 0;
-
-  sprintf(buffer, formatoArtigo, linha, preco);
-
-  int codExiste = existeCodigo(fdArt, codigoInt);
 
   //quando o código do artigo não existe não altera o preco
-  if(!codExiste) return bytesEscritos;
+  if (!existeCodigo(fdArt, codigoInt, tamArtigo)) {
+    close(fdArt);
+    return;
+  }
 
-  bytesEscritos = write(fdArt, buffer, tamArtigo);
+  else {
+      //já está na linha do artigo pretendido
+      if ((nbytes = lseek (fdArt, (codigoInt-1) * tamArtigo, SEEK_SET)) < 0) {
+        perror("Erro ao fazer lseek na função alteraPreco.");
+        close(fdArt);
+        return;
+      }
 
-  close(fdArt);
+      DEBUG_MACRO("Quantos bytes leu para achar a linha do artigo %d\n", nbytes);
 
-  return bytesEscritos;
+      // TODO: RESOLVER SÓ LÊ 1 BYTE DE CADA VEZ, se ler tamArtigo dá erro
+      if (readline(fdArt, buffer, 1) < 0) {
+        perror("Erro ao ler do ficheiro artigos na função alteraPreco.");
+        close(fdArt);
+        return;
+      }
+
+      sscanf(buffer, "%d %f", &linha, &precoAntigo);
+      buffer[0]= 0;
+
+      DEBUG_MACRO("Linha %d Preço antigo %f\n", linha, precoAntigo);
+
+      sprintf(buffer, formatoArtigo, linha, preco);
+
+      DEBUG_MACRO("Buffer %s\n", buffer);
+
+
+      if (lseek(fdArt, (codigoInt-1) * tamArtigo, SEEK_SET) < 0) {
+        perror("Erro ao fazer lseek na função alteraPreco.");
+        close(fdArt);
+        return;
+      }
+
+      if (mywrite(fdArt, buffer, tamArtigo) < 0) {
+        perror("Erro ao escrever em artigos na função alteraPreco.");
+        close(fdArt);
+        return;
+      }
+
+      close(fdArt);
+  }
 }
 
-//Função que manda executar o agregador, recebendo o numero de bytes lidos inicialmente, e que atualiza a variavel global
-// do número de bytes lidos + os bytes lidos anteriormente
-
-
+/*
+Função que manda executar o agregador, recebendo o numero de bytes lidos
+inicialmente, e que atualiza a variavel global
+do número de bytes lidos + os bytes lidos anteriormente
+*/
 int mandaAgregar(int nBytesLidosAGIni){
 
     int nbytes;
+    int posicao = 0;
 
-    int posicao=0;
-    
+
     int byteslidos;
     char bufferino[2048];
-    int fdVendas = open("vendas.txt", O_RDONLY);
+    int fdVendas = myopen("vendas", O_RDONLY);
+    if (fdVendas < 0) {
+      perror("Erro ao abrir o ficheiro vendas na função mandaAgregar.");
+      _exit(errno);
+    }
 
     if((nbytes = lseek(fdVendas, nBytesLidosAGIni, SEEK_SET) ) < 0){
         perror("Erro no lseek");
@@ -290,7 +334,7 @@ int mandaAgregar(int nBytesLidosAGIni){
        perror("The localtime() function failed");    
     }
     
-    sprintf(dataHora,"%d-%02d-%02dT%02d:%02d:%02d.txt",ptm->tm_year+1900,ptm->tm_mon,ptm->tm_mday, ptm->tm_hour, 
+    sprintf(dataHora,"%d-%02d-%02dT%02d:%02d:%02d",ptm->tm_year+1900,ptm->tm_mon,ptm->tm_mday, ptm->tm_hour, 
            ptm->tm_min, ptm->tm_sec);
 
     //codigo do  para mandar fazer o agregador
@@ -298,7 +342,17 @@ int mandaAgregar(int nBytesLidosAGIni){
 
     
 
-    int fdAgFileData = open(dataHora, O_CREAT | O_WRONLY | O_TRUNC, permissoes);
+    
+    int fdAgFileData = myopen(dataHora, O_CREAT | O_WRONLY);
+    if (fdAgFileData < 0) {
+      perror("Erro no lseek na função mandaAgregar.");
+      close(fdVendas);
+    return;
+  }
+    //codigo do  para mandar fazer o agregador
+    int pf[2];
+
+    
     //fazer com que o filho nasça com o output o ficheiro data
 
   if (pipe(pf) < 0){
@@ -340,20 +394,52 @@ int mandaAgregar(int nBytesLidosAGIni){
 
             bufferino[byteslidos-1]='\n';
             bufferino[byteslidos]='\0';
-            if(write(pf[1],bufferino,byteslidos)<0) {
-                perror("Erro na escrita do file para o pipe");
+            if(mywrite(pf[1],bufferino,byteslidos)<0) {
+                perror("Erro na escrita do ficheiro vendas para o pipe.");
             }
             posicao++;
           }
           close(pf[1]);
-
     }
+
 return posicao;
+
 }
+
+/*
+Função que envia um sinal ao servidor de que foi inserido um novo artigo.
+*/
+void enviaSinalSv(){
+  char buffer[2048];
+  buffer[0] = 0;
+  int pidSv;
+
+  int fdSv = myopen("servidorPid", O_RDONLY);
+  if (fdSv < 0) {
+    DEBUG_MACRO("Erro ao ler o ficheiro do servidorPid.\n");
+    return;
+  }
+
+  if (readline(fdSv, buffer, 1) < 0) { //ler mais do que 1 byte;
+    DEBUG_MACRO("Erro ao ler a linha do ficheiro servidorPid\n");
+    close(fdSv);
+    return;
+  }
+
+  close(fdSv);
+
+  sscanf(buffer, "%d\n", &pidSv);
+
+  if (kill(pidSv, SIGUSR1) < 0) {
+    DEBUG_MACRO("Erro ao enviar sinal");
+    return;
+  }
+}
+
 
 //main
 int main() {
-  int byteslidos=1;
+  int byteslidos = 1;
   char buffer[2048];
   buffer[0] = 0;
   char letra[2];
@@ -362,14 +448,19 @@ int main() {
   nome_codigo[0] = 0;
   char preco_nome[500];
   preco_nome[0] = 0;
-  const char *files[3] = {"strings.txt", "artigos.txt", "stocks.txt"};
-  
-  abrir_log();
 
+  const char *files[3] = {"strings", "artigos", "stocks"};
+
+  abrir_log("log_ma");
+
+  criaFicheiros(files, 3);
+
+
+  DEBUG_MACRO("Comecar a ler do stdin");
   while(byteslidos > 0) {   //TODO: ler mais do que um byte
 
     //TODO: mais do que 1 byte
-    if ((byteslidos = readline(0, buffer, 1)) <= 0)
+    if ((byteslidos = readline(STDIN_FILENO, buffer, 1)) <= 0)
       break;
 
     buffer[byteslidos - 1] = '\n';
@@ -378,20 +469,31 @@ int main() {
 
     sscanf(buffer, "%s %s %s", letra, nome_codigo, preco_nome);
 
-    if(strcmp(letra, "i") == 0){
-        criaFicheiros(files, 3);
+    if(strcmp(letra, "i") == 0) {
+      if(strlen(preco_nome) > 7) {
+        DEBUG_MACRO("Produto: %s com preço num formato maior do que o permitido: %s.\n", nome_codigo, preco_nome);
+      }
+      else {
         insereArtigo(preco_nome, nome_codigo);
+        enviaSinalSv();
+      }
     }
 
-    if(strcmp(letra, "n") == 0){
-        alteraNome(nome_codigo, preco_nome);
+    if(strcmp(letra, "n") == 0) {
+      if(strlen(nome_codigo) > 7) {
+        DEBUG_MACRO("Código num formato maior do que o permitido: %s.\n", nome_codigo);
+      }
+      else alteraNome(nome_codigo, preco_nome);
     }
 
     if(strcmp(letra, "p") == 0){
-        alteraPreco(nome_codigo, preco_nome);
+        if(strlen(preco_nome) > 7 || strlen(nome_codigo) > 7) {
+          DEBUG_MACRO("Produto com código: %s com preço num formato superior ao permitido: %s.\n", nome_codigo, preco_nome);
+        }
+        else alteraPreco(nome_codigo, preco_nome);
     }
 
-    if(strcmp(letra, "a") == 0){
+    if(strcmp(letra, "a") == 0){ //Aqui tb tem de se ter em atenção que o tamanho do preço não pode exceder
         
         char posicaoSI[21];
         char posicaoSN[21];

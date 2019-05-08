@@ -6,74 +6,84 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
+#include <limits.h>
 #include <ctype.h>
 #include <errno.h>
+#include <signal.h>
 #include "debug.h"
 #include "aux.h"
 
 
 
 /*
-Função que insere uma entrada (formato: código e quantidade) no ficheiro
-stocks.txt. A função devolve o número de bytes escritos.
+Função que escreve no pipe de um determinado cliente.
 */
-int insereStock(char*codigo, char*quantidade){
+void escrevePipeCliente(int fdCliente, char *buffer, int nbytes) {
+	int bytesEscritos;
 
-	int fdArtigos, fdStocks, codigoInt, quantidadeInt, bytesEscritos;
+	if ((bytesEscritos = mywrite(fdCliente, buffer, nbytes)) < 0 ){
+		perror("Erro ao escrever no pipe do cliente na função getStock_Preco.");
+	}
+}
+
+/*
+Função que insere uma entrada (formato: código e quantidade) no ficheiro
+stocks.
+*/
+void insereStock(char*codigo, char*quantidade){
+
+	int fdArtigos, fdStocks, codigoInt, quantidadeInt, bytesEscritos = 0;
 	char stocks[100];
 
-  fdArtigos = open("artigos.txt", O_RDONLY);
+  fdArtigos = myopen("artigos", O_RDONLY);
   if(fdArtigos < 0){
-   perror("Erro a abrrir ficheiro stocks.txt");
-   _exit(errno);
+   perror("Erro a abrir ficheiro artigos na função insereStock.");
+	 _exit(errno);
   }
 
-	fdStocks = open("stocks.txt", O_WRONLY | O_APPEND);
+	fdStocks = myopen("stocks", O_WRONLY | O_APPEND);
 	if(fdStocks < 0){
-	 perror("Erro a abrrir ficheiro stocks.txt");
+	 perror("Erro a abrir ficheiro stocks na função insereStock.");
+	 close(fdArtigos);
 	 _exit(errno);
+	}
+
+	//quando querem inserir uma quantidade superior à do formato
+	if(strlen(quantidade) > tamQuantidade || strlen(codigo) > tamCodigo){
+		close(fdArtigos);
+		close(fdStocks);
+		return;
 	}
 
 	codigoInt = atoi(codigo);
 
 	quantidadeInt = atoi(quantidade);
 
-	int qtos = sprintf(stocks, formatoStocks, codigoInt, quantidadeInt);
+	sprintf(stocks, formatoStocks, codigoInt, quantidadeInt);
 
-	if(qtos < 0) {
-    	perror("Erro na função sprintf");
-    	_exit(errno);
-  	}
+  int	qtos = strlen(stocks);
 
-  	qtos = strlen(stocks);
+  DEBUG_MACRO("tamanho do formato %d    codigo do artigo %d\n",qtos, codigoInt);
 
-  	DEBUG_MACRO("tamanho do formato %d\n",qtos );
+  if(existeCodigo(fdArtigos,codigoInt, tamArtigo)){
+			if ((bytesEscritos = mywrite(fdStocks, stocks, qtos)) < 0){
+				perror("Erro ao escrever no ficheiro dos stocks na função insereStock.");
+				close(fdArtigos);
+				close(fdStocks);
+				return;
+			}
+	}
 
-
-    //verificar se o artigo existe
-
-    if(existeCodigo(fdArtigos,codigoInt)==1){
-      	bytesEscritos = write(fdStocks, stocks, qtos);
-      }
-    else{
-      perror("Tentaram inserir um produto no stock com código inexistente ");
-      }
-
-    close(fdArtigos);
-  	close(fdStocks);
-
-  	return bytesEscritos;
+  close(fdArtigos);
+  close(fdStocks);
 }
 
-
-
 /*
-Função que escreve no ecran a quantidade e o preço do artigo
-cujo código passado é como parâmetro.A função retorna a quantidade
-de bytes escritos no ecran.
+Função que escreve no pipe especifico do cliente a quantidade
+e o preço do artigo cujo código passado é como parâmetro.
 */
-int getStock_Preco(char *codigo, int fd) {
-  int bytesEscritos = 0, codigoInt, fdArt;
+void getStock_Preco(char *codigo, int fdCliente) {
+  int codigoInt, fdArt;
   int bytesLidos, cdg;
   float preco;
   char buffer[1024];
@@ -81,238 +91,246 @@ int getStock_Preco(char *codigo, int fd) {
 
   int quantidade = getQuantidade(codigo);
 
+	DEBUG_MACRO("A quantidade é : %d\n", quantidade);
+
   codigoInt = atoi(codigo);
 
-  fdArt = open("artigos.txt", O_RDONLY);
+	DEBUG_MACRO("O código é %d\n", codigoInt);
+
+  fdArt = myopen("artigos", O_RDONLY);
   if(fdArt < 0) {
-    perror("Erro ao abrir o ficheiro artigos");
-    _exit(errno);
-  }
+    perror("Erro ao abrir o ficheiro artigos na função getStock_Preco.");
+		_exit(errno);
+	}
 
-  int existeCod = existeCodigo(fdArt, codigoInt);
-
-  if(!existeCod) {
-    
+  if(!existeCodigo(fdArt, codigoInt, tamArtigo)) {
     preco = 0.0;
     quantidade = 0;
   }
-
-  bytesLidos = readline(fdArt, buffer, 1); //ver depois para ler mais bytes
-
-  buffer[bytesLidos] = 0;
-
-  sscanf(buffer, "%d %f", &cdg, &preco);
+	else {
+  	if ((bytesLidos = readline(fdArt, buffer, 1)) < 0){ //ver depois para ler mais bytes
+				perror("Erro ao ler do ficheiro artigos na função getStock_Preco.");
+				close(fdArt);
+				return;
+		}
+  	buffer[bytesLidos] = 0;
+  	sscanf(buffer, "%d %f", &cdg, &preco);
+		DEBUG_MACRO("O buffer tem %s\n", buffer);
+		DEBUG_MACRO("O codigo é %d e o preco é %f\n", cdg, preco);
+	}
 
   sprintf(buffer, formatoArtigo, quantidade, preco);
 
   int qtos = strlen(buffer);
 
-  bytesEscritos = write(fd, buffer, qtos);
+	escrevePipeCliente(fdCliente, buffer, qtos);
 
-  return bytesEscritos;
+	DEBUG_MACRO("O que foi para o pipe do cliente foi %s\n", buffer);
+
+	close(fdArt);
 }
 
 
 /*
-Função que atualiza a quantidade dos artigos em stock.
-
-
-TODO: O que fazer quando um artigo que é vendido ou atualizar o seu Stocks
-mas ele não está nos artigos, qual é o preço?
-Ignorava.
-
-//TODO: quando o artigo não existia em stock e o insiro tenho de
- inserir o artigo no ficheiro artigos.txt, e se sim que nome lhe dou?
-
-
+Função que atualiza a quantidade dos artigos em stock, quer tenha
+havido uma venda ou inserção em stock de um artigo.
 */
-int actualizaStock(char* codigo, char* quantidade){
+void actualizaStock(char* codigo, char* quantidade){
 	int fdStocks, quantidadeInt, codigoInt, nbytes, quantidadeAtual;
   int bytesEscritos, bytesLidos, sinal, quantidadeTotal;
-	int flag = 0;
 	char buffer[2048];
 	char codigoArt[700], quantidadeArt[700];
 	char c = *quantidade;
 
-	if(c == '-'){
-		 sinal = -1;
-	}
-	else{
-		sinal = 1;
+	if(c == '-') sinal = -1;
+
+	else sinal = 1;
+
+	//verifica se a quantidade e o código cumprem os tamanhos permitidos
+	if(strlen(quantidade) > tamQuantidade || strlen(codigo) > tamCodigo){
+		return;
 	}
 
-	if ((fdStocks = open("stocks.txt", O_RDWR)) < 0) {
-	 perror("Erro ao abrrir ficheiro stocks.txt");
-	 _exit(errno);
-	}
-
-	if (lseek(fdStocks, 0, SEEK_SET) < 0){
-		perror("erro no lseek");
+	if ((fdStocks = myopen("stocks", O_RDWR)) < 0) {
+	 	perror("Erro ao abrir ficheiro stocks na função actualizaStock.");
 		_exit(errno);
 	}
 
-  //caso o artigo já existe em stock
-	while((bytesLidos = readline(fdStocks, buffer, 1)) > 0) {
+	codigoInt = atoi(codigo);
+
+
+	//artigo não existe em stock significa que também não existe nos artigos
+	if (!existeCodigo(fdStocks, codigoInt, tamStocks)) {
+		close(fdStocks);
+		return;
+	}
+
+	else { //artigo existe em stock
+		if ((bytesLidos = readline(fdStocks, buffer, 1)) < 0) {
+			perror("Erro ao ler do ficheiro stocks na função actualizaStock.");
+		}
 		sscanf(buffer,"%s %s", codigoArt, quantidadeArt);
 
-    //já leu a linha que quero mudar
-		if(strcmp(codigo, codigoArt) == 0){
-			buffer[0] = 0;
-			codigoInt = atoi(codigo);
-			quantidadeInt = abs(atoi(quantidade));
-			quantidadeTotal = atoi(quantidadeArt);
 
-      if(sinal == -1){
-        if(quantidadeTotal < quantidadeInt) {
-          quantidadeAtual = 0;
-        }
-        else quantidadeAtual = quantidadeTotal - quantidadeInt;
-      }
+		quantidadeInt = abs(atoi(quantidade));
+		quantidadeTotal = atoi(quantidadeArt);
 
-      else quantidadeAtual = quantidadeTotal + quantidadeInt;
+		if(sinal == -1){
+			if(quantidadeTotal < quantidadeInt) {
+				quantidadeAtual = 0;
+			}
+			else quantidadeAtual = quantidadeTotal - quantidadeInt;
+		}
 
-      //verifica onde está
-      if((nbytes = lseek(fdStocks, 0, SEEK_CUR)) < 0){
-        perror("Erro ao fazer lseek");
-        _exit(errno);
-      }
+		else quantidadeAtual = quantidadeTotal + quantidadeInt;
 
-      //linha onde está o artigo no stocks.txt
-      nbytes = nbytes - tamStocks;
+		//verifica onde está
+		if((nbytes = lseek(fdStocks, 0, SEEK_CUR)) < 0) {
+			perror("Erro ao fazer lseek na função actualizaStock.");
+			close(fdStocks);
+			return;
+		}
 
-      //posiciona-se na linha que pretende atualizar
-      if((nbytes = lseek(fdStocks, nbytes, SEEK_SET)) < 0) {
-        perror("Erro no 2.º lseek");
-        _exit(errno);
-      }
+		//linha onde está o artigo no stocks
+		nbytes = nbytes - tamStocks;
 
-			sprintf(buffer, formatoStocks, codigoInt, quantidadeAtual);
+		//posiciona-se na linha que pretende atualizar
+		if((nbytes = lseek(fdStocks, nbytes, SEEK_SET)) < 0) {
+			perror("Erro no 2.º lseek na função actualizaStock.");
+			close(fdStocks);
+			return;
+		}
 
-      int qtos = strlen(buffer);
+		sprintf(buffer, formatoStocks, codigoInt, quantidadeAtual);
 
-      bytesEscritos = write(fdStocks, buffer, qtos);
+		int qtos = strlen(buffer);
 
-      flag = 1;
+		if ((bytesEscritos = mywrite(fdStocks, buffer, qtos)) < 0) {
+			perror("Erro ao escrever no ficheiro stocks na função actualizaStock.");
+			close(fdStocks);
+			return;
 		}
 	}
 
-  //significa que não existia o artigo em stock
-	if(flag == 0) bytesEscritos = insereStock(codigo,quantidade);
-
 	close(fdStocks);
-
-	return bytesEscritos;
 
 }
 
-
 /*
 Função que insere uma entrada (formato código, quantidade vendida e
-preço total da venda) no ficheiro vendas.txt. Caso a quantidade
+preço total da venda) no ficheiro vendas. Caso a quantidade
 passada como parametro seja superior à quantidade do produto
 disponível em stock vende a quantidade do produto que tem em stock.
-A função devolve o número de bytes escritos.
 */
-int insereVenda(char *codigo, char *quantidade){
-
+void insereVenda(char *codigo, char *quantidade){
 	int fdVendas, fdArtigos, codigoInt;
-  int bytesEscritos = 0, quantidadeInt, nbytes, codNome;
+  int quantidadeInt, codNome;
 	float preco, precoTotalVenda;
 	char buff[2048];
 	char vendas[100];
 
 
-	fdVendas = open("vendas.txt", O_WRONLY | O_APPEND);
+	fdVendas = myopen("vendas", O_WRONLY | O_APPEND);
 
-	if(fdVendas < 0){
-	 perror("Erron a abrrir ficheiro vendas.txt");
-	 _exit(errno);
+	if(fdVendas < 0) {
+	 	perror("Erro a abrir ficheiro vendas");
+		_exit(errno); // TODO: ALTERAR
+	}
+
+	//se o tamanho dos comandos for superior ao permitido
+	if(strlen(quantidade) > tamQuantidade || strlen(codigo) > tamCodigo){
+		close(fdVendas);
+		return;
 	}
 
 	codigoInt = atoi(codigo);
 	quantidadeInt = abs(atoi(quantidade));
 
-	fdArtigos = open("artigos.txt", O_RDONLY);
+	fdArtigos = myopen("artigos", O_RDONLY);
 	if(fdArtigos < 0){
-	 perror("Erro ao abrir ficheiro artigos.txt");
-	 _exit(errno);
+	 perror("Erro ao abrir ficheiro artigos na função insereVenda.");
+	 close(fdVendas);
+	 _exit(errno); // TODO: ALTERAR
 	}
 
-	if((nbytes = lseek(fdArtigos, (codigoInt-1) * tamArtigo, SEEK_SET)) < 0){
-		perror("Erro no lseek");
-		_exit(errno);
+  // TODO: VERIFICAR EM AMBOS ARTIGO E STOCK
+	if (!existeCodigo(fdArtigos, codigoInt, tamArtigo)) {
+		close(fdArtigos);
+		close(fdVendas);
+		return;
 	}
 
-	readline(fdArtigos, buff, tamArtigo);
+	if (readline(fdArtigos, buff, 1) < 0) {
+		perror("Erro a ler do ficheiro artigos na função insereVenda.");
+		close(fdArtigos);
+		close(fdVendas);
+		return;
+	}
 
 	sscanf(buff,"%d %f", &codNome, &preco);
 
   //consultar o stocks para ver quantos artigos existem em stock
   int emStock = getQuantidade(codigo);
 
+  if(emStock == 0) {
+		close(fdArtigos);
+		close(fdVendas);
+		return;
+	}
 
-  if(emStock == 0) return bytesEscritos;
-
-  if(emStock > 0 && emStock < quantidadeInt) { //se tiver menos produtos em stock vende só os que tiver
+	//se tiver menos produtos em stock vende só os que tiver
+  if(emStock > 0 && emStock < quantidadeInt) {
     precoTotalVenda = ((float)emStock) * preco;
     sprintf(vendas, formatoVendas, codigoInt, emStock, precoTotalVenda);
   }
   else {
-	precoTotalVenda = ((float)quantidadeInt) * preco;
-	sprintf(vendas, formatoVendas, codigoInt, quantidadeInt, precoTotalVenda);
+		precoTotalVenda = ((float)quantidadeInt) * preco;
+		sprintf(vendas, formatoVendas, codigoInt, quantidadeInt, precoTotalVenda);
   }
 
   int qtos = strlen(vendas);
 
-  DEBUG_MACRO("tamanho do formato %d\n",qtos );
 
-  bytesEscritos = write(fdVendas, vendas, qtos);
-
-  actualizaStock(codigo, quantidade);
+  if(mywrite(fdVendas, vendas, qtos) < 0) {
+		perror("Erro a escrever no ficheiro de vendas na função insereVenda.");
+		close(fdArtigos);
+		close(fdVendas);
+		return;
+	}
 
   close(fdArtigos);
 
   close(fdVendas);
-
-	return bytesEscritos;
 }
 
 /*
 Função que cria o pipe para onde todos os clientes escrevem
-e do qual o servidor lê.
+e do qual o servidor lê. A função retorna o descritor do pipe comum.
 */
 int criaPipeComum(void) {
   int fd;
 
-  if (mkfifo("pipeComum.txt", permissoes) < 0) {
+  if (mkfifo("pipeComum", PERMISSOES) < 0) {
     if (errno != EEXIST) {
       perror("Erro ao criar o pipe comum.");
       _exit(errno);
     }
   }
 
-  if ((fd = open("pipeComum.txt", O_RDWR)) < 0){
-    perror("Erro ao abrir o ficheiro pipeComum.txt");
+  if ((fd = myopen("pipeComum", O_RDONLY)) < 0){
+    perror("Erro ao abrir o ficheiro pipeComum");
     _exit(errno);
   }
 
   return fd;
 }
 
-/*
-Função que fecha o pipe para onde todos os clientes escrevem
-e do qual o servidor lê.
-*/
-void fechaPipeComum(int fd) {
-  if(close(fd) < 0) {
-    perror("Erro ao fechar o pipe comum.");
-    _exit(errno);
-  }
-}
 
 /*
 Função que divide a string com os comandos a serem executados
 em várias strings, tendo como elemento separador o espaço.
+A função devolve o número de string em que o parametro comandos
+foi dividido.
 */
 int divideComandos(char *comandos, char *codigoArt, char *quant) {
   int conta = 1, j = 0, i = 0;
@@ -342,7 +360,7 @@ sejam passados no stdin, respetivamente, o código do artigo e a quantidade
 (a inserir em stock ou a vender) ou somente o código do artigo.
 */
 void processaComandos(char buffer[], char *comandos, int fdCliente) {
-  int conta, stock, qtos, bytesEscritos, sinal = 1;
+  int conta, stock, qtos, sinal = 1;
   char codigoArt[700];
   codigoArt[0] = 0;
   char quant[700];
@@ -354,94 +372,201 @@ void processaComandos(char buffer[], char *comandos, int fdCliente) {
       if(quant[0] == '-') {
         sinal = -1;
         insereVenda(codigoArt, quant);
+				actualizaStock(codigoArt, quant);
       }
 
       else if(sinal == 1) {
         actualizaStock(codigoArt, quant);
       }
 
-  //rotina para imprimir no stdout
-  stock = getQuantidade(codigoArt);
+  		//rotina para imprimir no stdout
+  		stock = getQuantidade(codigoArt);
 
-  sprintf(buffer, "%d\n", stock);
+  		sprintf(buffer, "%d\n", stock);
 
-  qtos = strlen(buffer);
+  		qtos = strlen(buffer);
 
-  if((bytesEscritos = write(fdCliente, buffer, qtos)) < 0) {
-      perror("Erro ao escrever o pipe cliente especifico.");
-      _exit(errno);
+  		escrevePipeCliente(fdCliente, buffer, qtos);
+	}
+
+	//quando só é passado o código do artigo
+  else if (conta == 1) getStock_Preco(codigoArt, fdCliente);
+
+}
+
+
+void criaServidorPid() {
+	char buffer[2048];
+	buffer[0] = 0;
+
+	int pidSv = getpid();
+
+	int fd = myopen("servidorPid", O_CREAT | O_TRUNC | O_WRONLY);
+	if(fd < 0) {
+		perror("Erro ao criar o ficheiro servidorPid.");
+		_exit(errno);
+	}
+
+	int qtos = sprintf(buffer, "%d\n", pidSv);
+
+	if (mywrite(fd, buffer, qtos) < 0) {
+		perror("Erro ao escrever no ficheiro servidorPid na função escrevePidSv.");
+		_exit(errno);
+	}
+
+	close(fd);
+}
+
+
+/*
+Função que ignora os erros ECONNRESET quando é chamada a função
+readline.
+A função retorna o número de bytes lidos.
+*/
+int myreadServidor(int fildes, void *buf, int nbytes) {
+  int byteslidos;
+
+    while(TRUE){
+        byteslidos = readline(fildes, buf, nbytes);
+
+        if (byteslidos > 0) {
+          return byteslidos;
+        }
+        else if (errno != ECONNRESET && errno != EEXIST) {
+					DEBUG_MACRO("PORRA %d %d\n", errno, byteslidos);
+          return byteslidos;
+        }
     }
-  }
-  else if (conta == 1) {
-    getStock_Preco(codigoArt, fdCliente);
-  }
-
 }
 
 /*
 Função em que o servidor lê do pipe comum e escreve para um
 pipe com nome para responder especificamente a um determinado cliente.
 */
-void servidor(int fd) {
+void servidor(int fdComum) {
   char buffer[1024];
   buffer[0] = 0;
   char processo[200];
   processo[0] = 0;
-  char comandos[200];
+  char comandos[1024];
   comandos[0] = 0;
   int byteslidos, i, j, fdCliente;
 
-
   // TODO: ler mais do que um byte de cada vez
-  while((byteslidos = readline(fd, buffer, 1)) > 0){
+  while((byteslidos = myreadServidor(fdComum, buffer, 1)) > 0) {
 
-    DEBUG_MACRO("Buffer pipe Cliente %s\n", buffer);
+    	DEBUG_MACRO("Buffer pipe Cliente %s\n", buffer);
 
-    for(i = 0; buffer[i] != '@'; i++){
-      processo[i] = buffer[i];
-    }
-    processo[i] = 0;
-    i++;
+    	for(i = 0; buffer[i] != '@'; i++){
+      	processo[i] = buffer[i];
+    	}
+    	processo[i] = 0;
+    	i++;
 
-    DEBUG_MACRO("Processo antes do .txt %s\n", processo);
+    	for(j = 0; buffer[i] != 0; j++, i++){
+      	comandos[j] = buffer[i];
+    	}
+    	comandos[j] = '\n';
+    	comandos[++j] = 0;
 
-    for(j = 0; buffer[i] != 0; j++, i++){
-      comandos[j] = buffer[i];
-    }
-    comandos[j] = '\n';
-    comandos[++j] = 0;
+			if(strlen(comandos) > PIPE_BUF) {
+	        perror("Mensagem superior ao tamanho do pipe.");
+					continue;
+	    }
 
-    strcat(processo, ".txt");
-    DEBUG_MACRO("Processo %s Comandos %s", processo, comandos);
+    	DEBUG_MACRO("Processo %s Comandos %s\n", processo, comandos);
 
-    //TODO: manter uma estrutura de dados para saber se o ficheiro está aberto
-    if ((fdCliente = open(processo, O_RDWR)) < 0) {
-      perror("Erro ao abrir o pipe cliente especifico.");
-      _exit(errno);
-    }
+    	//TODO: manter uma estrutura de dados para saber se o ficheiro está aberto
+    	if ((fdCliente = myopen(processo, O_WRONLY)) < 0) {
+      	perror("Erro ao abrir o pipe cliente especifico.");
+      	_exit(errno);
+    	}
 
-     processaComandos(buffer, comandos, fdCliente);
+			DEBUG_MACRO("fdCliente %d\n", fdCliente);
+			processaComandos(buffer, comandos, fdCliente);
+	}
+}
 
+/*
+Função que inicializa a zero no ficheiro de stocks a quantidade de
+todos os artigos que já foram anteriormente inseridos no ficheiro artigos.
+*/
+void setStocks(int signum) {
+	int nbytesArt, nbytesStocks, fdArt, fdStocks;
+	char buffer[100];
+	buffer[0] = 0;
 
+	(void)signum;
 
-  }
+	fdStocks = myopen("stocks", O_RDWR);
+	if(fdStocks < 0) {
+	 perror("Erro a abrir ficheiro stocks na função setStocks.");
+	 _exit(errno);
+ }
+
+ if((nbytesStocks = lseek(fdStocks, 0, SEEK_END)) < 0) {
+		 perror("Erro ao fazer lseek no ficheiro stocks na função setStocks.");
+		 close(fdStocks);
+		 return;
+ }
+
+	close(fdStocks);
+
+ fdArt = myopen("artigos", O_RDONLY);
+	if (fdArt < 0) {
+		perror("Erro ao abrir os artigos na função setStocks.");
+		close(fdStocks);
+		close(fdArt);
+		_exit(errno);
+	}
+
+	if((nbytesArt = lseek(fdArt, 0, SEEK_END)) < 0) {
+			perror("Erro ao fazer lseek no ficheiro artigos na função setStocks.");
+			close(fdStocks);
+			close(fdArt);
+			return;
+	}
+
+	close(fdArt);
+
+	int linhasArt = nbytesArt / tamArtigo;
+
+	int linhasStocks = nbytesStocks / tamStocks;
+
+	if(linhasStocks < linhasArt) {
+		for (int i = (linhasStocks + 1); i <= linhasArt; i++) {
+				sprintf(buffer, "%d", i);
+
+				insereStock(buffer, "0");
+		}
+	}
+
 }
 
 //main
 int main() {
 
-  const char *files[2] = {"stocks.txt", "vendas.txt"};
+	abrir_log("log_servidor");
+
+  const char *files[2] = {"stocks", "vendas"};
 
   criaFicheiros(files, 2);
+
+	setStocks(0);
+
+	if (signal(SIGUSR1, setStocks) == SIG_ERR) {
+		perror("Erro ao enviar o sinal.");
+	}
+
+	criaServidorPid();
 
   int fd = criaPipeComum();
 
   servidor(fd);
 
-  close(fd);
+  fechaPipeComum(fd);
 
-
-
+	fechar_log();
 
   return 0;
 

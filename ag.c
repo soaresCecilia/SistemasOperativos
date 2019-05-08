@@ -8,6 +8,12 @@
 #include "aux.h"
 #include "debug.h"
 
+
+/*
+Função que aloca memória necessária para estutura de dados com o tamanho
+tam e inicializa essa mesma estutura com todas as suas posições a zero.
+A função retorna um apontador para a referida estrutura.
+*/
 dados inicializaEstrutura(int tam) {
 
   dados info = calloc(tam, sizeof(struct agrega));
@@ -16,7 +22,10 @@ dados inicializaEstrutura(int tam) {
 }
 
 
-//Aumenta a estutura
+/*
+Função que duplica o tamanho da estrutura de dados agrega.
+A função devolve o tamanho atual da estrutura.
+*/
 int aumentaEstrutura(dados *info, int tam){
   int novotam = 2*tam;
 
@@ -30,17 +39,24 @@ int aumentaEstrutura(dados *info, int tam){
   return novotam;
 }
 
-
+/*
+Função que agrega as entradas recebidas pelo STDIN
+no formato do ficheiro de vendas, até end-of-file, contando
+para esse efeito com o auxílio da estrutura agrega que irá
+conter em cada uma das suas posições o somatório das quantidades e
+dos montantes vendidos do código correspondente ao índice da
+referida estutura.
+*/
 void agregarVendas(dados info, int *tam) {
   char buffer[2048];
   buffer[0] = 0;
   int byteslidos = 0,cod, quant;
   float montante;
-    
+
 
     //TODO: ler mais do que 1 byte
     while ((byteslidos = readline(0, buffer, 1)) > 0) {
-        
+
         sscanf(buffer, "%d %d %f", &cod, &quant, &montante);
        /* if(cod >= *tam) {
           *tam = aumentaEstrutura(&info, *tam);
@@ -53,7 +69,11 @@ void agregarVendas(dados info, int *tam) {
     }
 }
 
-
+/*
+Função que escreve para o stdout a vendas agregadas de cada
+artigo no formato código, quantidade total vendida desse artigo e
+montante total vendido do referido artigo.
+*/
 void escreveStdout(dados info, int tam){
   char buffer[2048];
   buffer[0] = 0;
@@ -68,7 +88,7 @@ void escreveStdout(dados info, int tam){
 
       qtos = strlen(buffer);
 
-      write(STDOUT_FILENO, buffer, qtos);
+      mywrite(STDOUT_FILENO, buffer, qtos);
     }
 
   }
@@ -77,9 +97,9 @@ void escreveStdout(dados info, int tam){
 
 
 
-
+//main
 int main() {
-  
+
   dados info = NULL;
   int tam = 100000;
 

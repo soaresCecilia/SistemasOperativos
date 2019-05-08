@@ -11,48 +11,7 @@
 #include "aux.h"
 
 
-/*
-Função que cria um pipe com nome específico para cada
-cliente que interaja com o servidor. Esse pipe é nomeado
-com base no pid do processo que está a executar.
-*/
-int criaPipeEspecifico() {
-  char buffer[200];
-  buffer[0] = 0;
-  int fd;
 
-  int pid = getpid();
-
-  sprintf(buffer, "p%d.txt", pid);
-
-  if (mkfifo(buffer, permissoes) < 0) {
-    perror("Erro ao criar o pipe cliente especifico.");
-    DEBUG_MACRO("Nome do pipe %s\n", buffer);
-    _exit(errno);
-  }
-
-  if ((fd = open(buffer, O_RDWR)) < 0) {
-    perror("Erro ao abir o pipe especifico");
-    _exit(errno);
-  }
-
-  return fd;
-}
-
-
-/*
-Função que abre o pipe para onde todos os clientes escrevem
-e do qual o servidor lê.
-*/int abrePipeComum() {
-  int fd;
-
-  if ((fd = open("pipeComum.txt", O_RDWR)) < 0){
-    perror("Erro ao abrir o ficheiro pipeComum.txt");
-    _exit(errno);
-  }
-
-  return fd;
-}
 
 /*
 Função que lê do pipe e que imprime o resultado no stdout.
@@ -67,9 +26,8 @@ void lePipeEspecifico(int fd) {
   if ((byteslidos = readline(fd, buffer, 1)) > 0) {
     buffer[byteslidos - 1] = '\n';
     buffer[byteslidos] = 0;
-    if(write(STDOUT_FILENO, buffer, byteslidos) < 0) {
+    if(mywrite(STDOUT_FILENO, buffer, byteslidos) < 0) {
       perror("Erro ao ler mensagem do pipe Especifico");
-      _exit(errno);
     }
   }
 }
@@ -92,9 +50,13 @@ void cliente(int fdComum, int fdEspecifico){
   //lê do stdin para o buffer enqto não for EOF  TODO:PIPE_BUF
   while(byteslidos > 0) {   //TODO: ler mais do que um byte
 
-    if ((byteslidos = readline(0, buffer, 1)) < 0)
+    if ((byteslidos = readline(STDIN_FILENO, buffer, 1)) < 0)
       break;
 
+    if(byteslidos > PIPE_BUF) {
+        perror("Mensagem superior ao tamanho do pipe.");
+        continue;
+    }
     //tratamento do pid do processo
     sprintf(aux, "p%d@", pid);
 
@@ -108,40 +70,23 @@ void cliente(int fdComum, int fdEspecifico){
     int qtos = strlen(aux);
 
     //escreve para o pipe comum o pid do processo e a mensagem
-    if (write(fdComum, aux, qtos) < 0){
-        perror("Erro ao escrever pid e mensagem no pipeComum.txt");
-        _exit(errno);
+    if (mywrite(fdComum, aux, qtos) < 0){
+        perror("Erro ao escrever pid e mensagem no pipeComum");
     }
 
     lePipeEspecifico(fdEspecifico);
   }
 }
 
-/*
-Função que fecha o pipe para onde todos os clientes escrevem
-e do qual o servidor lê.
-*/
-void fechaPipeComum(int fd) {
-  if(close(fd) < 0) {
-    perror("Erro ao fechar o pipe Comum.");
-    _exit(errno);
-  }
-}
-
-/*
-Função que fecha o pipe do processo específico que está
-a comunicar com o servidor.
-*/
-void fechaPipeEspecifico(int fd) {
-  if(close(fd) < 0) {
-    perror("Erro ao fechar o pipe específico.");
-    _exit(errno);
-  }
-}
-
 
 //main
 int main() {
+
+  abrir_log("log_cliente");
+
+  const char *files[2] = {"stocks", "vendas"};
+
+  criaFicheiros(files, 2);
 
   int fdEspecifico = criaPipeEspecifico();
 
@@ -152,8 +97,6 @@ int main() {
   fechaPipeComum(fdComum);
 
   fechaPipeEspecifico(fdEspecifico);
-
-  //printf("%d\n", PIPE_BUF);
 
 	return 0;
 }
