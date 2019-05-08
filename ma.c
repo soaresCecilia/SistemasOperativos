@@ -5,6 +5,7 @@
 #include <errno.h>
 #include <string.h>
 #include <sys/wait.h>
+#include <time.h> 
 #include "debug.h"
 #include "aux.h"
 
@@ -259,22 +260,45 @@ int alteraPreco(char *codigo, char *novoPreco){
 // do número de bytes lidos + os bytes lidos anteriormente
 
 
-void mandaAgregar(int nBytesLidosAGIni){
+int mandaAgregar(int nBytesLidosAGIni){
 
     int nbytes;
+
+    int posicao=0;
     
     int byteslidos;
     char bufferino[2048];
     int fdVendas = open("vendas.txt", O_RDONLY);
 
     if((nbytes = lseek(fdVendas, nBytesLidosAGIni, SEEK_SET) ) < 0){
-    perror("Erro no lseek");
-    _exit(errno);
-  }
+        perror("Erro no lseek");
+        _exit(errno);
+    }
+
+    // codigo para criar nome ficheiro com o resultado da agregacao
+    char dataHora[100];
+
+    time_t rawtime = time(NULL);
+    
+    if (rawtime == -1) {
+        perror("The time() function failed");
+    }
+  
+    struct tm *ptm = localtime(&rawtime);
+    
+    if (ptm == NULL) {
+       perror("The localtime() function failed");    
+    }
+    
+    sprintf(dataHora,"%d-%02d-%02dT%02d:%02d:%02d.txt",ptm->tm_year+1900,ptm->tm_mon,ptm->tm_mday, ptm->tm_hour, 
+           ptm->tm_min, ptm->tm_sec);
+
     //codigo do  para mandar fazer o agregador
     int pf[2];
 
-    int fdAgFileData = open("dataagregacao.txt", O_CREAT | O_WRONLY | O_TRUNC, permissoes);
+    
+
+    int fdAgFileData = open(dataHora, O_CREAT | O_WRONLY | O_TRUNC, permissoes);
     //fazer com que o filho nasça com o output o ficheiro data
 
   if (pipe(pf) < 0){
@@ -319,11 +343,12 @@ void mandaAgregar(int nBytesLidosAGIni){
             if(write(pf[1],bufferino,byteslidos)<0) {
                 perror("Erro na escrita do file para o pipe");
             }
+            posicao++;
           }
           close(pf[1]);
 
     }
-
+return posicao;
 }
 
 //main
@@ -338,7 +363,7 @@ int main() {
   char preco_nome[500];
   preco_nome[0] = 0;
   const char *files[3] = {"strings.txt", "artigos.txt", "stocks.txt"};
-
+  
   abrir_log();
 
   while(byteslidos > 0) {   //TODO: ler mais do que um byte
@@ -367,10 +392,44 @@ int main() {
     }
 
     if(strcmp(letra, "a") == 0){
-        mandaAgregar(0);
+        
+        char posicaoSI[21];
+        char posicaoSN[21];
+        int byteslidos, posicaoI, posicaoN=0;
+        int fdPosAgr = open("posAgregador.txt", O_CREAT | O_RDWR , permissoes);
+
+        //ver se o ficheiro está vazio, se estiver agregar a partir da posicao 0
+        // escrever o numero de linhas lidas no ficheiro posAgregador
+        if((byteslidos=read(fdPosAgr,posicaoSI,100))==0){
+                     
+            posicaoI = mandaAgregar(0);
+                     
+            sprintf(posicaoSI,"%d",posicaoI);
+             int nbw=write(fdPosAgr,posicaoSI,100);
+                    
+            close(fdPosAgr);
+        }
+        //se não estiver
+        // ler do ficheiro posAgregador a ultima linha que leu
+        // e passa-la como argumento à mandaAgregar
+        // por fim, escrever o numero da linha no ficheiro
+        else{
+                   
+          lseek(fdPosAgr,0,SEEK_SET);//coloca a ler desde o inicio o ficheiro poAgr
+          int nbr=read(fdPosAgr,posicaoSN,100);
+                      
+          sscanf(posicaoSN,"%d",&posicaoN);
+                     
+          posicaoN += mandaAgregar(posicaoN*tamVendas);
+                      
+          lseek(fdPosAgr,0,SEEK_SET);//coloca a ler desde o inicio o ficheiro poAgr para escrever a nova linha
+
+          sprintf(posicaoSN,"%d",posicaoN);
+          write(fdPosAgr,posicaoSN,100);
+          close(fdPosAgr);
+        }
+        
     }
-
-
   }
 
   fechar_log();
