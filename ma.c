@@ -295,32 +295,8 @@ void alteraPreco(char *codigo, char *novoPreco){
   }
 }
 
-/*
-Função que manda executar o agregador, recebendo o numero de bytes lidos
-inicialmente, e que atualiza a variavel global
-do número de bytes lidos + os bytes lidos anteriormente
-*/
-int mandaAgregar(int nBytesLidosAGIni){
-
-    int nbytes;
-    int posicao = 0;
-
-
-    int byteslidos;
-    char bufferino[2048];
-    int fdVendas = myopen("vendas", O_RDONLY);
-    if (fdVendas < 0) {
-      perror("Erro ao abrir o ficheiro vendas na função mandaAgregar.");
-      _exit(errno);
-    }
-
-    if((nbytes = lseek(fdVendas, nBytesLidosAGIni, SEEK_SET) ) < 0){
-        perror("Erro no lseek");
-        _exit(errno);
-    }
-
-    // codigo para criar nome ficheiro com o resultado da agregacao
-    char dataHora[100];
+void nomeFichAgregar(char *dataHora) {
+// codigo para criar nome ficheiro com o resultado da agregacao
 
     time_t rawtime = time(NULL);
     
@@ -336,22 +312,44 @@ int mandaAgregar(int nBytesLidosAGIni){
     
     sprintf(dataHora,"%d-%02d-%02dT%02d:%02d:%02d",ptm->tm_year+1900,ptm->tm_mon,ptm->tm_mday, ptm->tm_hour, 
            ptm->tm_min, ptm->tm_sec);
+}
 
+
+
+/*
+Função que manda executar o agregador, recebendo o numero de bytes lidos
+inicialmente, e que atualiza a variavel global
+do número de bytes lidos + os bytes lidos anteriormente
+*/
+int mandaAgregar(int nBytesLidosAGIni){
+    int nbytes;
+    int posicao = 0;
+    char dataHora[100];
+    dataHora[0]= 0;
+    int byteslidos;
+    char bufferino[2048];
+    int fdVendas = myopen("vendas", O_RDONLY);
+    if (fdVendas < 0) {
+      perror("Erro ao abrir o ficheiro vendas na função mandaAgregar.");
+      _exit(errno);
+    }
+
+    if((nbytes = lseek(fdVendas, nBytesLidosAGIni, SEEK_SET) ) < 0){
+        perror("Erro no lseek");
+        _exit(errno);
+    }
+
+    
     //codigo do  para mandar fazer o agregador
     int pf[2];
 
-    
+    nomeFichAgregar(dataHora);
 
-    
     int fdAgFileData = myopen(dataHora, O_CREAT | O_WRONLY);
     if (fdAgFileData < 0) {
       perror("Erro no lseek na função mandaAgregar.");
       close(fdVendas);
-    return;
   }
-    //codigo do  para mandar fazer o agregador
-    int pf[2];
-
     
     //fazer com que o filho nasça com o output o ficheiro data
 
@@ -436,6 +434,51 @@ void enviaSinalSv(){
   }
 }
 
+void agrega(){
+    char posicaoSI[21];
+    char posicaoSN[21];
+    int byteslidos, posicaoI, posicaoN=0;
+    int fdPosAgr = myopen("posAgregador", O_CREAT | O_RDWR);
+
+        //ver se o ficheiro está vazio, se estiver agregar a partir da posicao 0
+        // escrever o numero de linhas lidas no ficheiro posAgregador
+        if((byteslidos=myread(fdPosAgr,posicaoSI,1))==0){
+           
+            posicaoI = mandaAgregar(0);
+                  
+            int qtos = sprintf(posicaoSI,"%d\n",posicaoI);
+
+            int qtos2= strlen(posicaoSI);
+            int nbw=mywrite(fdPosAgr,posicaoSI, qtos2);
+                 
+            close(fdPosAgr);
+        }
+        //se não estiver
+        // ler do ficheiro posAgregador a ultima linha que leu
+        // e passa-la como argumento à mandaAgregar
+        // por fim, escrever o numero da linha no ficheiro
+        else{
+                   
+          lseek(fdPosAgr,0,SEEK_SET);//coloca a ler desde o inicio o ficheiro poAgr
+          int nbr=readline(fdPosAgr,posicaoSN,1);
+                              
+          sscanf(posicaoSN,"%d",&posicaoN);
+                  
+                     
+          posicaoN += mandaAgregar(posicaoN*tamVendas);
+                  
+
+          lseek(fdPosAgr,0,SEEK_SET);//coloca a ler desde o inicio o ficheiro poAgr para escrever a nova linha
+
+          sprintf(posicaoSN,"%d",posicaoN);
+                 
+          int qtos = strlen(posicaoSN);
+          mywrite(fdPosAgr,posicaoSN,qtos);
+                  
+          close(fdPosAgr);
+        }
+}
+
 
 //main
 int main() {
@@ -495,41 +538,7 @@ int main() {
 
     if(strcmp(letra, "a") == 0){ //Aqui tb tem de se ter em atenção que o tamanho do preço não pode exceder
         
-        char posicaoSI[21];
-        char posicaoSN[21];
-        int byteslidos, posicaoI, posicaoN=0;
-        int fdPosAgr = open("posAgregador.txt", O_CREAT | O_RDWR , permissoes);
-
-        //ver se o ficheiro está vazio, se estiver agregar a partir da posicao 0
-        // escrever o numero de linhas lidas no ficheiro posAgregador
-        if((byteslidos=read(fdPosAgr,posicaoSI,100))==0){
-                     
-            posicaoI = mandaAgregar(0);
-                     
-            sprintf(posicaoSI,"%d",posicaoI);
-             int nbw=write(fdPosAgr,posicaoSI,100);
-                    
-            close(fdPosAgr);
-        }
-        //se não estiver
-        // ler do ficheiro posAgregador a ultima linha que leu
-        // e passa-la como argumento à mandaAgregar
-        // por fim, escrever o numero da linha no ficheiro
-        else{
-                   
-          lseek(fdPosAgr,0,SEEK_SET);//coloca a ler desde o inicio o ficheiro poAgr
-          int nbr=read(fdPosAgr,posicaoSN,100);
-                      
-          sscanf(posicaoSN,"%d",&posicaoN);
-                     
-          posicaoN += mandaAgregar(posicaoN*tamVendas);
-                      
-          lseek(fdPosAgr,0,SEEK_SET);//coloca a ler desde o inicio o ficheiro poAgr para escrever a nova linha
-
-          sprintf(posicaoSN,"%d",posicaoN);
-          write(fdPosAgr,posicaoSN,100);
-          close(fdPosAgr);
-        }
+          agrega();
         
     }
   }
