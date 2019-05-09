@@ -488,23 +488,37 @@ em várias strings, tendo como elemento separador o espaço.
 A função devolve o número de string em que o parametro comandos
 foi dividido.
 */
-int divideComandos(char *comandos, char *codigoArt, char *quant) {
-  int conta = 1, j = 0, i = 0;
+int divideComandos(char *comandos, char *codig_agr, char *quant) {
+  int conta = 0;
+  char* array[2];
+  array[0]=0;
+  array[1]=0;
 
-   for(i = 0; comandos[i] != 0 && comandos[i] != ' '; i++){
-     codigoArt[i] = comandos[i];
-   }
-   codigoArt[i] = 0;
+  const char s[2] =" ";
+  char* token;
 
-   if(comandos[i] == ' ') {
-     while(comandos[i] == ' ') i++;
-     for(j = 0; comandos[i] != 0; i++, j++){
-       quant[j] = comandos[i];
-       conta++;
-     }
-   }
-   quant[j] = 0;
+  token= strtok(comandos,s);
+  
+  while(token != NULL){
+  	array[conta] = token;
+  	conta++;
+  	token = strtok(NULL,s);
+  }
 
+  if (conta == 1 ) {
+  	array[1] = " ";
+  	sscanf(array[0],"%s",codig_agr);
+  	sscanf(array[1],"%s",quant);
+ 
+  	DEBUG_MACRO("codigo agr: %s....... quant: %s \n",codig_agr, quant );
+  	DEBUG_MACRO("conta = %d\n", conta );
+  }
+  else {
+  	
+  	sscanf(array[0],"%s",codig_agr);
+  	sscanf(array[1],"%s",quant);
+  	
+  }
    DEBUG_MACRO("%d\n", conta);
    
    return conta;
