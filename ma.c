@@ -5,7 +5,6 @@
 #include <errno.h>
 #include <string.h>
 #include <sys/wait.h>
-#include <time.h> 
 #include <signal.h>
 #include "debug.h"
 #include "aux.h"
@@ -295,115 +294,6 @@ void alteraPreco(char *codigo, char *novoPreco){
   }
 }
 
-void nomeFichAgregar(char *dataHora) {
-// codigo para criar nome ficheiro com o resultado da agregacao
-
-    time_t rawtime = time(NULL);
-    
-    if (rawtime == -1) {
-        perror("The time() function failed");
-    }
-  
-    struct tm *ptm = localtime(&rawtime);
-    
-    if (ptm == NULL) {
-       perror("The localtime() function failed");    
-    }
-    
-    sprintf(dataHora,"%d-%02d-%02dT%02d:%02d:%02d",ptm->tm_year+1900,ptm->tm_mon,ptm->tm_mday, ptm->tm_hour, 
-           ptm->tm_min, ptm->tm_sec);
-}
-
-
-
-/*
-Função que manda executar o agregador, recebendo o numero de bytes lidos
-inicialmente, e que atualiza a variavel global
-do número de bytes lidos + os bytes lidos anteriormente
-*/
-int mandaAgregar(int nBytesLidosAGIni){
-    int nbytes;
-    int posicao = 0;
-    char dataHora[100];
-    dataHora[0]= 0;
-    int byteslidos;
-    char bufferino[2048];
-    int fdVendas = myopen("vendas", O_RDONLY);
-    if (fdVendas < 0) {
-      perror("Erro ao abrir o ficheiro vendas na função mandaAgregar.");
-      _exit(errno);
-    }
-
-    if((nbytes = lseek(fdVendas, nBytesLidosAGIni, SEEK_SET) ) < 0){
-        perror("Erro no lseek");
-        _exit(errno);
-    }
-
-    
-    //codigo do  para mandar fazer o agregador
-    int pf[2];
-
-    nomeFichAgregar(dataHora);
-
-    int fdAgFileData = myopen(dataHora, O_CREAT | O_WRONLY);
-    if (fdAgFileData < 0) {
-      perror("Erro no lseek na função mandaAgregar.");
-      close(fdVendas);
-  }
-    
-    //fazer com que o filho nasça com o output o ficheiro data
-
-  if (pipe(pf) < 0){
-    perror("Pipe PaiFilho falhou");
-    _exit(errno);
-  }
-
-
-  switch(fork()) {
-      case -1:
-        perror("Fork falhou");
-        _exit(errno);
-
-      case 0:
-          //filho
-          dup2(fdAgFileData,1);
-          close(fdAgFileData);
-          //fechar descritor de escrita no pipe por parte do filho
-          close(pf[1]);
-          //tornar o filho capaz de ler do pipe
-          dup2(pf[0],0);
-          close(pf[0]);
-
-          if((execlp("./ag","./ag",NULL))==-1){
-              perror("Erro na execucao do execlp");
-              _exit(errno);
-          }
-
-          _exit(errno);
-
-      default:
-          //pai
-          //fechar descritor de leitura do pipe por parte do pai
-          close(pf[0]);
-
-
-          //escrever para o pipe
-          while((byteslidos=readline(fdVendas,bufferino,1))>0){
-
-            bufferino[byteslidos-1]='\n';
-            bufferino[byteslidos]='\0';
-            if(mywrite(pf[1],bufferino,byteslidos)<0) {
-                perror("Erro na escrita do ficheiro vendas para o pipe.");
-            }
-            posicao++;
-          }
-          close(pf[1]);
-    }
-
-return posicao;
-
-}
-
 /*
 Função que envia um sinal ao servidor de que foi inserido um novo artigo.
 */
@@ -434,50 +324,23 @@ void enviaSinalSv(){
   }
 }
 
-void agrega(){
-    char posicaoSI[21];
-    char posicaoSN[21];
-    int byteslidos, posicaoI, posicaoN=0;
-    int fdPosAgr = myopen("posAgregador", O_CREAT | O_RDWR);
+// passar o comando a (agregar) para o pipe comum
 
-        //ver se o ficheiro está vazio, se estiver agregar a partir da posicao 0
-        // escrever o numero de linhas lidas no ficheiro posAgregador
-        if((byteslidos=myread(fdPosAgr,posicaoSI,1))==0){
-           
-            posicaoI = mandaAgregar(0);
-                  
-            int qtos = sprintf(posicaoSI,"%d\n",posicaoI);
+void ma(int fdPipeComum){
 
-            int qtos2= strlen(posicaoSI);
-            int nbw=mywrite(fdPosAgr,posicaoSI, qtos2);
-                 
-            close(fdPosAgr);
-        }
-        //se não estiver
-        // ler do ficheiro posAgregador a ultima linha que leu
-        // e passa-la como argumento à mandaAgregar
-        // por fim, escrever o numero da linha no ficheiro
-        else{
-                   
-          lseek(fdPosAgr,0,SEEK_SET);//coloca a ler desde o inicio o ficheiro poAgr
-          int nbr=readline(fdPosAgr,posicaoSN,1);
-                              
-          sscanf(posicaoSN,"%d",&posicaoN);
-                  
-                     
-          posicaoN += mandaAgregar(posicaoN*tamVendas);
-                  
+  int pid = getpid();
+  char letra[100]="a\n";
+  char buffer[2048];
+  buffer[0]=0;
 
-          lseek(fdPosAgr,0,SEEK_SET);//coloca a ler desde o inicio o ficheiro poAgr para escrever a nova linha
+  sprintf(buffer, "p%d@%s",pid,letra); 
 
-          sprintf(posicaoSN,"%d",posicaoN);
-                 
-          int qtos = strlen(posicaoSN);
-          mywrite(fdPosAgr,posicaoSN,qtos);
-                  
-          close(fdPosAgr);
-        }
-}
+  int qts= strlen(buffer);
+
+  mywrite(fdPipeComum,buffer,qts);
+  DEBUG_MACRO("o que estou a enviar para o pipe comum %s\n",buffer );
+} 
+
 
 
 //main
@@ -538,7 +401,9 @@ int main() {
 
     if(strcmp(letra, "a") == 0){ //Aqui tb tem de se ter em atenção que o tamanho do preço não pode exceder
         
-          agrega();
+        int fdPipeComum = myopen("pipeComum", O_WRONLY);
+        //passar o comando a para o pipe comum
+        ma(fdPipeComum);         
         
     }
   }
