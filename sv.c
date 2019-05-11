@@ -10,10 +10,11 @@
 #include <ctype.h>
 #include <errno.h>
 #include <signal.h>
+#include <time.h>
 #include "debug.h"
 #include "aux.h"
 
-
+#define AGREGAR_FICHEIRO 1
 
 /*
 Função que escreve no pipe de um determinado cliente.
@@ -326,28 +327,206 @@ int criaPipeComum(void) {
 }
 
 
+// codigo para criar nome ficheiro com o resultado da agregacao
+void nomeFichAgregar(char *dataHora) {
+
+
+    time_t rawtime = time(NULL);
+
+    if (rawtime == -1) {
+        perror("The time() function failed");
+    }
+
+    struct tm *ptm = localtime(&rawtime);
+
+    if (ptm == NULL) {
+       perror("The localtime() function failed");
+    }
+
+    sprintf(dataHora,"%d-%02d-%02dT%02d:%02d:%02d",ptm->tm_year+1900,ptm->tm_mon,ptm->tm_mday, ptm->tm_hour,
+           ptm->tm_min, ptm->tm_sec);
+}
+
+
+/*
+Função que manda executar o agregador, recebendo o numero de bytes lidos
+inicialmente, e que atualiza a variavel global
+do número de bytes lidos + os bytes lidos anteriormente
+*/
+int mandaAgregar(int nBytesLidosAGIni){
+    int nbytes;
+    int posicao = 0;
+    char dataHora[100];
+    dataHora[0]= 0;
+    int byteslidos;
+    char bufferino[2048];
+    int fdVendas = myopen("vendas", O_RDONLY);
+    if (fdVendas < 0) {
+      perror("Erro ao abrir o ficheiro vendas na função mandaAgregar.");
+      _exit(errno);
+    }
+
+    if((nbytes = lseek(fdVendas, nBytesLidosAGIni, SEEK_SET) ) < 0){
+        perror("Erro no lseek");
+        _exit(errno);
+    }
+
+
+    //codigo do  para mandar fazer o agregador
+    int pf[2];
+
+    nomeFichAgregar(dataHora);
+
+    int fdAgFileData = myopen(dataHora, O_CREAT | O_WRONLY);
+    if (fdAgFileData < 0) {
+      perror("Erro no lseek na função mandaAgregar.");
+      close(fdVendas);
+  }
+
+    //fazer com que o filho nasça com o output o ficheiro data
+
+  if (pipe(pf) < 0){
+    perror("Pipe PaiFilho falhou");
+    _exit(errno);
+  }
+
+
+  switch(fork()) {
+      case -1:
+        perror("Fork falhou");
+        _exit(errno);
+
+      case 0:
+          //filho
+          dup2(fdAgFileData,1);
+          close(fdAgFileData);
+          //fechar descritor de escrita no pipe por parte do filho
+          close(pf[1]);
+          //tornar o filho capaz de ler do pipe
+          dup2(pf[0],0);
+          close(pf[0]);
+
+					#if AGREGAR_FICHEIRO
+              if((execlp("./agf", "./agf", NULL))==-1){
+                  perror("Erro na execucao do execlp do agf");
+                  _exit(errno);
+              }
+          #else
+              if((execlp("./ag","./ag",NULL))==-1){
+                  perror("Erro na execucao do execlp do ag");
+                  _exit(errno);
+              }
+          #endif
+
+          _exit(errno);
+
+      default:
+          //pai
+          //fechar descritor de leitura do pipe por parte do pai
+          close(pf[0]);
+
+
+          //escrever para o pipe
+          while((byteslidos=readline(fdVendas,bufferino,1))>0){
+
+            bufferino[byteslidos-1]='\n';
+            bufferino[byteslidos]='\0';
+            if(mywrite(pf[1],bufferino,byteslidos)<0) {
+                perror("Erro na escrita do ficheiro vendas para o pipe.");
+            }
+            posicao++;
+          }
+          close(pf[1]);
+    }
+
+return posicao;
+
+}
+
+void agrega(){
+    char posicaoSI[21];
+    char posicaoSN[21];
+    int byteslidos, posicaoI, posicaoN=0;
+    int fdPosAgr = myopen("posAgregador", O_CREAT | O_RDWR);
+
+        //ver se o ficheiro está vazio, se estiver agregar a partir da posicao 0
+        // escrever o numero de linhas lidas no ficheiro posAgregador
+        if((byteslidos=myread(fdPosAgr,posicaoSI,1))==0){
+
+            posicaoI = mandaAgregar(0);
+
+            int qtos = sprintf(posicaoSI,"%d\n",posicaoI);
+
+            int qtos2= strlen(posicaoSI);
+            int nbw=mywrite(fdPosAgr,posicaoSI, qtos2);
+
+            close(fdPosAgr);
+        }
+        //se não estiver
+        // ler do ficheiro posAgregador a ultima linha que leu
+        // e passa-la como argumento à mandaAgregar
+        // por fim, escrever o numero da linha no ficheiro
+        else{
+
+          lseek(fdPosAgr,0,SEEK_SET);//coloca a ler desde o inicio o ficheiro poAgr
+          int nbr=readline(fdPosAgr,posicaoSN,1);
+
+          sscanf(posicaoSN,"%d",&posicaoN);
+
+
+          posicaoN += mandaAgregar(posicaoN*tamVendas);
+
+
+          lseek(fdPosAgr,0,SEEK_SET);//coloca a ler desde o inicio o ficheiro poAgr para escrever a nova linha
+
+          sprintf(posicaoSN,"%d",posicaoN);
+
+          int qtos = strlen(posicaoSN);
+          mywrite(fdPosAgr,posicaoSN,qtos);
+
+          close(fdPosAgr);
+        }
+}
+
+
 /*
 Função que divide a string com os comandos a serem executados
 em várias strings, tendo como elemento separador o espaço.
 A função devolve o número de string em que o parametro comandos
 foi dividido.
 */
-int divideComandos(char *comandos, char *codigoArt, char *quant) {
-  int conta = 1, j = 0, i = 0;
+int divideComandos(char *comandos, char *codig_agr, char *quant) {
+  int conta = 0;
+  char* array[2];
+  array[0]=0;
+  array[1]=0;
 
-   for(i = 0; comandos[i] != 0 && comandos[i] != ' '; i++){
-     codigoArt[i] = comandos[i];
-   }
-   codigoArt[i] = 0;
+  const char s[2] =" ";
+  char* token;
 
-   if(comandos[i] == ' ') {
-     while(comandos[i] == ' ') i++;
-     for(j = 0; comandos[i] != 0; i++, j++){
-       quant[j] = comandos[i];
-       conta++;
-     }
-   }
-   quant[j] = 0;
+  token= strtok(comandos,s);
+
+  while(token != NULL){
+  	array[conta] = token;
+  	conta++;
+  	token = strtok(NULL,s);
+  }
+
+  if (conta == 1 ) {
+  	array[1] = " ";
+  	sscanf(array[0],"%s",codig_agr);
+  	sscanf(array[1],"%s",quant);
+
+  	DEBUG_MACRO("codigo agr: %s....... quant: %s \n",codig_agr, quant );
+  	DEBUG_MACRO("conta = %d\n", conta );
+  }
+  else {
+
+  	sscanf(array[0],"%s",codig_agr);
+  	sscanf(array[1],"%s",quant);
+
+  }
+   DEBUG_MACRO("%d\n", conta);
 
    return conta;
 }
@@ -367,6 +546,8 @@ void processaComandos(char buffer[], char *comandos, int fdCliente) {
   quant[0] = 0;
 
   conta = divideComandos(comandos, codigoArt, quant);
+
+  DEBUG_MACRO("O codigo a %s, qutd de a: %s\n", codigoArt, quant );
 
   if(conta > 1) {
       if(quant[0] == '-') {
@@ -390,7 +571,19 @@ void processaComandos(char buffer[], char *comandos, int fdCliente) {
 	}
 
 	//quando só é passado o código do artigo
-  else if (conta == 1) getStock_Preco(codigoArt, fdCliente);
+  else if (conta == 1){
+  		if (codigoArt[0]== 'a'){
+   			DEBUG_MACRO("estou a agregar\n");
+
+  			agrega();
+  			}
+
+  		else{
+   				getStock_Preco(codigoArt, fdCliente);
+   				DEBUG_MACRO("estou aqui\n");
+   			}
+
+	}
 
 }
 
@@ -454,7 +647,7 @@ void servidor(int fdComum) {
 
   // TODO: ler mais do que um byte de cada vez
   while((byteslidos = myreadServidor(fdComum, buffer, 1)) > 0) {
-
+  		DEBUG_MACRO("SERVIDOR diz: o que estou a ler do pipeComum %s\n",buffer );
     	DEBUG_MACRO("Buffer pipe Cliente %s\n", buffer);
 
     	for(i = 0; buffer[i] != '@'; i++){
@@ -468,11 +661,13 @@ void servidor(int fdComum) {
     	}
     	comandos[j] = '\n';
     	comandos[++j] = 0;
-
+    		DEBUG_MACRO("SERVIDOR diz: comando que estou a ler pipeComum %s\n",comandos);
 			if(strlen(comandos) > PIPE_BUF) {
 	        perror("Mensagem superior ao tamanho do pipe.");
 					continue;
 	    }
+
+	    if(comandos[0] != 'a') {
 
     	DEBUG_MACRO("Processo %s Comandos %s\n", processo, comandos);
 
@@ -480,6 +675,7 @@ void servidor(int fdComum) {
     	if ((fdCliente = myopen(processo, O_WRONLY)) < 0) {
       	perror("Erro ao abrir o pipe cliente especifico.");
       	_exit(errno);
+    	}
     	}
 
 			DEBUG_MACRO("fdCliente %d\n", fdCliente);
