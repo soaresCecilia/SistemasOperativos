@@ -14,7 +14,7 @@
 #include "debug.h"
 #include "aux.h"
 
-#define AGREGAR_FICHEIRO 1
+#define AGREGAR_FICHEIRO 0
 
 /*
 Função que escreve no pipe de um determinado cliente.
@@ -526,7 +526,7 @@ int divideComandos(char *comandos, char *codig_agr, char *quant) {
   	sscanf(array[1],"%s",quant);
 
   }
-   DEBUG_MACRO("%d\n", conta);
+   DEBUG_MACRO("Conta %d\n", conta);
 
    return conta;
 }
@@ -647,8 +647,6 @@ void servidor(int fdComum) {
 
   // TODO: ler mais do que um byte de cada vez
   while((byteslidos = myreadServidor(fdComum, buffer, 1)) > 0) {
-  		DEBUG_MACRO("SERVIDOR diz: o que estou a ler do pipeComum %s\n",buffer );
-    	DEBUG_MACRO("Buffer pipe Cliente %s\n", buffer);
 
     	for(i = 0; buffer[i] != '@'; i++){
       	processo[i] = buffer[i];
@@ -661,24 +659,20 @@ void servidor(int fdComum) {
     	}
     	comandos[j] = '\n';
     	comandos[++j] = 0;
-    		DEBUG_MACRO("SERVIDOR diz: comando que estou a ler pipeComum %s\n",comandos);
+
 			if(strlen(comandos) > PIPE_BUF) {
 	        perror("Mensagem superior ao tamanho do pipe.");
 					continue;
 	    }
 
 	    if(comandos[0] != 'a') {
-
-    	DEBUG_MACRO("Processo %s Comandos %s\n", processo, comandos);
-
-    	//TODO: manter uma estrutura de dados para saber se o ficheiro está aberto
-    	if ((fdCliente = myopen(processo, O_WRONLY)) < 0) {
-      	perror("Erro ao abrir o pipe cliente especifico.");
-      	_exit(errno);
-    	}
+			    	//TODO: manter uma estrutura de dados para saber se o ficheiro está aberto
+			    	if ((fdCliente = myopen(processo, O_WRONLY)) < 0) {
+			      	perror("Erro ao abrir o pipe cliente especifico.");
+			      	_exit(errno);
+			    	}
     	}
 
-			DEBUG_MACRO("fdCliente %d\n", fdCliente);
 			processaComandos(buffer, comandos, fdCliente);
 	}
 }
