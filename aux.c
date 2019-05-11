@@ -129,8 +129,6 @@ int getQuantidade(char *codigo) {
 
   int codigoInt = atoi(codigo);
 
-  DEBUG_MACRO("Código é %d\n", codigoInt);
-
   int fdStocks = myopen("stocks", O_RDONLY);
 	if(fdStocks < 0){
 	 perror("Erro ao abrir ficheiro stocks");
@@ -150,7 +148,6 @@ int getQuantidade(char *codigo) {
       return -1;
     }
 
-  DEBUG_MACRO("Conteúdo do buffer getQuantidade %s\n", buffer);
 
   sscanf(buffer,"%d %d", &codigoArt, &quantidade);
 
@@ -202,7 +199,6 @@ int criaPipeEspecifico() {
 
   if (mkfifo(buffer, PERMISSOES) < 0) {
     perror("Erro ao criar o pipe cliente especifico.");
-    DEBUG_MACRO("Nome do pipe %s\n", buffer);
     _exit(errno);
   }
 

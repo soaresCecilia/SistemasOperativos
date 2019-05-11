@@ -7,119 +7,212 @@
 #include "debug.h"
 #include "aux.h"
 
-
 /*
-Devolve o número de linhas lidas do ficheiro artigos até encontrar
-a string str ou, caso não encontre, devolve o número seguinte à última
-linha antes do EOF do referido ficheiro.
+ verificar se esse nr da linha existe no artigos.txt,
+ caso encontre, devolve 1, sse não encontrar devolve 0 para booleano
+
 */
-int contaLinhasArtigos(char *str, int *flag) {
-  int byteslidos, fdArt, linha = 0, byte;
+void getExisteLinha (int fdArtigos, char *nrLinhaStringS, int *booleano) {
+
+  int byte;
   char buffer[2048];
   buffer[0] = 0;
-  *flag = -1;
-
-  fdArt = myopen("artigos", O_RDONLY);
-  if (fdStr < 0){
-    perror("Erro ao abrir o ficheiro strings na função contaLinhasArtigos.");
-    _exit(errno);
-  }
-
-  if ((byte = lseek (fdStr, 0, SEEK_SET)) < 0) {
+  int byteslidos=0;
+  *booleano = -1;
+   
+  if ((byte = lseek (fdArtigos, 0, SEEK_SET)) < 0) {
     perror("Erro ao fazer lseek na função contaLinhasArtigos.");
-    close(fdArt);
-    return linha;
+    close(fdArtigos);
+   _exit(errno);
   }
 
-  DEBUG_MACRO("Em que byte abriu o artigos %d\n", byte);
+  while ((byteslidos = readline(fdArtigos, buffer, 1)) > 0) {
+     
 
+    int cmp = -1;  
+   	int conta = 0;
+  	char* array[2];
+  	array[0]=0;
+  	array[1]=0;
 
+  	const char s[2] =" ";
+  	char* token;
 
-  while ((byteslidos = readline(fdArt, buffer, 1)) > 0) {
-        linha++;
-        DEBUG_MACRO("Linha %d\n", linha);
-        DEBUG_MACRO("Byteslidos %d\n", byteslidos);
-        DEBUG_MACRO("Conteudo do buffer %s\n", buffer);
-        if(((*flag) = strcmp(str, buffer)) == 0) {
-        DEBUG_MACRO("Flag a cada iteracao %d\n", *flag);
-          break;
-        }
+  	token= strtok(buffer,s);
+  
+  	while(token != NULL){
+  		array[conta] = token;
+  		conta++;
+  		token = strtok(NULL,s);
+  	}
+
+  	if ((cmp = strcmp(array[0], nrLinhaStringS)==0)){
+  			
+  			*booleano = cmp;
+  				
+  	}  	
+ } 
+}
+
+/*
+	funcao que vai ao ficheiro artigos e substituir todos os numeros antigos(nrLinhaStrings) 
+	pela posicao nova(novoNumeroLinhaCompactar)
+*/
+void alteraNrArtigo(int fdArtigos, char* novoNumeroLinhaCompactarS, char* nrLinhaStrings){
+
+	int byte;
+	char buffer[2048];
+	buffer[0] = 0;
+   	int byteslidos;
+   	int compara=-1;
+   	int novoNumeroLinhaCompactar;
+
+   	int linhaNoArtigos=0;
+
+	if ((byte = lseek (fdArtigos, 0, SEEK_SET)) < 0) {
+    	perror("Erro ao fazer lseek na função contaLinhasArtigos.");
+    	close(fdArtigos);
+   		_exit(errno);
+  	}
+
+	while ((byteslidos = readline(fdArtigos, buffer, 1)) > 0) {
+
+       	float precoArtigo=0;
+       	char bufferArtigos[2048];
+   		int conta = 0;
+  		char* array[2];
+  		array[0]=0;
+  		array[1]=0;
+  			
+  		const char s[2] =" ";
+  		char* token;
+
+  		token= strtok(buffer,s);
+  
+  		while(token != NULL){
+  			array[conta] = token;
+  			conta++;
+  			token = strtok(NULL,s);
+  		}
+		
+		linhaNoArtigos= linhaNoArtigos+1;
+
+		if((compara= strcmp(array[0], nrLinhaStrings))==0){
+		
+			sscanf(novoNumeroLinhaCompactarS,"%d",&novoNumeroLinhaCompactar);
+			sscanf(array[1],"%f",&precoArtigo);
+
+  			sprintf(bufferArtigos,formatoArtigo,novoNumeroLinhaCompactar, precoArtigo);
+  			int tamBufferArtigos= strlen(bufferArtigos);
+
+  			lseek(fdArtigos,(linhaNoArtigos-1)*tamArtigo,SEEK_SET);
+  			mywrite(fdArtigos, bufferArtigos, tamBufferArtigos);
+  	}
   }
+}
 
-  DEBUG_MACRO("Flag na contaLinhasArtigos %d\n", *flag);
+/*
+	Função que copiar do ficheiro auxiliar Compactado, para o ficheiro Strings
+*/
 
-  //quando não encontra o nome no ficheiro strings quer inseri-lo na linha seguinte
-  if((*flag) != 0) linha++;
+void toStringTxt(int fdStrings, int fdCompactar){
+	int nbytes;
+	char buffer[2048];
+	buffer[0]=0;
 
-  close(fdArt);
+	while((nbytes=readline(fdCompactar,buffer,1))>0){
+		buffer[nbytes-1]='\n';
+		buffer[nbytes]='\0';
+		mywrite(fdStrings,buffer,nbytes);
+	}
+}
 
-  return linha;
+void compactar(int fdArtigos, int fdStrings, int fdCompactar){
+
+	int booleano=-1;
+	
+	//
+	int nbytes;
+
+	//buffer para onde estou a ler o nome do artigo lido do ficheiro string.txt
+	char buffer[2048];
+	buffer[0]=0;
+
+	//buffer para passar o numero para uma string
+	char nrLinhaStringS[2048];
+	nrLinhaStringS[0]=0;
+
+	//inicializar o numero da linha que estamos a ler do ficheiro string.txt 
+	int nrLinhaString=0;
+
+	int novoNumeroLinhaCompactar=0;
+	char novoNumeroLinhaCompactarS[2048];
+	novoNumeroLinhaCompactarS[0]=0;
+
+		int byte;
+		if ((byte = lseek (fdStrings, 0, SEEK_SET)) < 0) {
+    	perror("Erro ao fazer lseek na função contaLinhasArtigos.");
+    	close(fdArtigos);
+   		_exit(errno);
+  	}
+		
+		//ler linhas do Strings
+	while( (nbytes =readline(fdStrings, buffer,1))>0){
+				
+
+		buffer[nbytes-1] = '\n';
+		buffer[nbytes] = 0;
+
+		// nr da linha do artigo no ficheiro strings.txt; 
+		nrLinhaString= nrLinhaString+1;
+
+		sprintf(nrLinhaStringS,"%d",nrLinhaString);
+
+		// verificar se esse nr da linha existe no artigos.txt
+		getExisteLinha (fdArtigos, nrLinhaStringS , &booleano);
+		// coloca ponteiro de leitura para ler do inicio do ficheiro artigos, na proxima iteracao do ciclo
+		lseek(fdArtigos,0,SEEK_SET);
+
+		if(booleano == 1){
+			//funcao escreve no compactar.txt
+			int tambuffer= strlen(buffer);
+			mywrite(fdCompactar,buffer,tambuffer);
+			//numero da linha no compactar onde foi escrito
+			novoNumeroLinhaCompactar++;
+		
+
+		sprintf(novoNumeroLinhaCompactarS,"%d",novoNumeroLinhaCompactar);
+
+		// alterar o numero da linha para qual esá a apontar o artigo 
+		//no ficheiro artigo
+
+		alteraNrArtigo(fdArtigos,novoNumeroLinhaCompactarS, nrLinhaStringS);
+
+		}
+	}
+	
+	//copiar tudo do ficheiro compactar para o ficheiro String (O_TRUNC)
+	close(fdStrings);
+	close(fdCompactar);	
+	
+	fdStrings=myopen("strings", O_WRONLY | O_TRUNC);
+	fdCompactar=myopen("compactado",O_RDONLY);
+	
+	toStringTxt(fdStrings,fdCompactar);
+
+close(fdArtigos);
+close(fdStrings);
+close(fdCompactar);	
 }
 
 
-
-int main()
-{
-	
+int main(){
 	//abrir ficheiros
-	int fdArt = myopen("artigos", O_RDWR);
+	int fdArtigos = myopen("artigos", O_RDWR);
 	int fdStrings = myopen("strings", O_RDWR);
-	int fdCompactar = myopen("comp",O_CREAT | O_RDWR | O_APPEND);
-
-	//variaveis
-	int nLinhaString = 0;
-	char nLinhaStringS[2048];
-	nLinhaStringS[0]=0;
-
-	int	nLinhaCompactar = 0;
-	int flag;
-
-	int nbytes
-
-	//buffers
-	char linhaString[2048];
-
-	//ir a String, ler uma linha e guardar o numero dessa linha
-
-	while((nbytes= readline(fdStrings,linhaString,1))>0){
-		linhaString[nbytes]='\n';
-		nLinhaString = nLinhaString+1;
-
-		sprintf(nLinhaStringS,"%d",nLinhaString);
-
-		int nLinhaArtigo= contaLinhasArtigos(nLinhaStringS,&flag);
-
-		//se encontrou escreve o ficheiro compactar
-		if(flag==0){
-
-			int qts= strlen(linhaString);
-			mywrite(fdCompactar,linhaString,qts);
-			nLinhaCompactar= nLinhaCompactar+1;
-		}
-		else{
-			nLinhaArtigo= nLinhaArtigo-1;
-		}
-
-		//ir ao ficheiro artigos e substituir o numero da linha de um artigo pela nova
-		lseek(fdArtigos,0,SEEK_SET);
-
-		while((nbytes= readline(fdArtigos,linhaArtigos,1))>0){
-
-			while(){}
-				sscanf(linhaArtigos,"%d %s ",&numero2,&lixo2);
-				if(nLinhaArtigo == numero2 ){
-					sprintf(l)
-				}
-			}
-		}
-
-
-	}
-
+	int fdCompactar = myopen("compactado",O_CREAT | O_RDWR | O_APPEND);
 	
+	compactar(fdArtigos,fdStrings, fdCompactar);
 	
-
-
-
-	return 0;
+return 0;
 }
