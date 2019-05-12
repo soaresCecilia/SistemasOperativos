@@ -1,46 +1,11 @@
 #include<stdio.h>
 #include<stdlib.h>
 #include<assert.h>
-
-const char *nome_base[] = {
-  "chocolate",
-  "caderno",
-  "chavena",
-  "mochila",
-  "telemóvel",
-  "guitarra",
-  "bolo",
-  "estrado",
-  "bicicleta",
-  "caneta",
-  "lápis",
-  "automóvel",
-  "prateleira",
-  "impressora",
-  "caneca"
-};
-
-const float preco_base[] = {
-  10.00,
-  11.00,
-  12.00,
-  13.00,
-  14.00,
-  15.00,
-  17.00,
-  18.00,
-  19.00,
-  20.00,
-  21.00,
-  22.00,
-  12345678.00,
-  24.00,
-  25.00
-};
+#include"gerar-dados.h"
 
 int main(int argv, char **argc) {
-  int size_nome = sizeof(nome_base)/sizeof(nome_base[0]);
-  int size_preco = sizeof(preco_base)/sizeof(preco_base[0]);
+  int size_nome = get_size_nome();
+  int size_preco = get_size_preco();
   assert(size_nome == size_preco);
 
   int num = 1;
