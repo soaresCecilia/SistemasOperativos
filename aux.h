@@ -49,6 +49,8 @@ int criaPipeEspecifico();
 
 void fechaPipeEspecifico(int fd);
 
+void removePipeEspecifico();
+
 int existeCodigo(int fd, int codigo, int tamformato);
 
 #endif

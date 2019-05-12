@@ -98,5 +98,7 @@ int main() {
 
   fechaPipeEspecifico(fdEspecifico);
 
-	return 0;
+  removePipeEspecifico();
+
+  return 0;
 }

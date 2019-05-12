@@ -230,7 +230,13 @@ int criaPipeEspecifico() {
   return fd;
 }
 
+void removePipeEspecifico() {
+  char buffer[200];
+  int pid = getpid();
 
+  sprintf(buffer, "p%d", pid);
+  remove(buffer);
+}
 
 /*
 Função que fecha o pipe do processo específico que está
