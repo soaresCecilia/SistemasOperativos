@@ -50,7 +50,7 @@ void cliente(int fdComum, int fdEspecifico){
   //lê do stdin para o buffer enqto não for EOF  TODO:PIPE_BUF
   while(byteslidos > 0) {   //TODO: ler mais do que um byte
 
-    if ((byteslidos = readline(STDIN_FILENO, buffer, 1)) < 0)
+    if ((byteslidos = readline(STDIN_FILENO, buffer, 1)) <= 0)
       break;
 
     if(byteslidos > PIPE_BUF) {

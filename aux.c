@@ -154,7 +154,7 @@ int getQuantidade(char *codigo) {
   int fdStocks = myopen("stocks", O_RDONLY);
 	if(fdStocks < 0){
 	 perror("Erro ao abrir ficheiro stocks");
-   _exit(errno);
+   return quantidade;
 	}
 
 	if (!existeCodigo(fdStocks, codigoInt, tamStocks)) {
@@ -167,12 +167,10 @@ int getQuantidade(char *codigo) {
     if(bytesLidos < 0) {
       perror("Erro ao ler dos stocks");
       close(fdStocks);
-      return -1;
+      return quantidade;
     }
 
-
   sscanf(buffer,"%d %d", &codigoArt, &quantidade);
-
 
   return quantidade;
 }
@@ -247,24 +245,26 @@ void fechaPipeEspecifico(int fd) {
 
 /*
 Função que verifica se o código introduzido existe no ficheiro.
-A função retorna 1 se o artigo existe, 0 se o mesmo não existe e
--1 se ocorreu algum erro.
+A função retorna 1 se o artigo existe, 0 se o mesmo não existe ou
+se ocorreu algum erro.
 */
 int existeCodigo(int fd, int codigoInt, int tamformato) {
   int resultado = 0, nbytes, bytesfim;
 
-if ((bytesfim = lseek(fd, 0, SEEK_END)) < 0) {
-  perror("Erro no lseek a partir do fim na função existeCodigo.");
-  return -1;
-}
+  if ((bytesfim = lseek(fd, 0, SEEK_END)) < 0) {
+    perror("Erro no lseek a partir do fim na função existeCodigo.");
+    return 0;
+  }
 
-if ((nbytes = lseek(fd, (codigoInt - 1) * tamformato, SEEK_SET)) < 0) {
-  perror("Erro no lseek da posicao do artigo na função existeCodigo.");
-  return -1;
-}
+  if ((nbytes = lseek(fd, (codigoInt - 1) * tamformato, SEEK_SET)) < 0) {
+    perror("Erro no lseek da posicao do artigo na função existeCodigo.");
+    return 0;
+  }
 
-//se o artigo não existir devolve preço 0 o nbytes tem de ser menor que bytesfim não pode ser igual
-if (nbytes < bytesfim) resultado = 1;
-
+  //se o artigo não existir devolve preço 0 o nbytes tem de ser menor que bytesfim não pode ser igual
+  if (nbytes < bytesfim) {
+    resultado = 1;
+  }
+  
   return resultado;
 }

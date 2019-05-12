@@ -39,14 +39,14 @@ void insereStock(char*codigo, char*quantidade){
   fdArtigos = myopen("artigos", O_RDONLY);
   if(fdArtigos < 0){
    perror("Erro a abrir ficheiro artigos na função insereStock.");
-	 _exit(errno);
+	 return;
   }
 
 	fdStocks = myopen("stocks", O_WRONLY | O_APPEND);
 	if(fdStocks < 0){
 	 perror("Erro a abrir ficheiro stocks na função insereStock.");
 	 close(fdArtigos);
-	 _exit(errno);
+	 return;
 	}
 
 	//quando querem inserir uma quantidade superior à do formato
@@ -86,7 +86,7 @@ e o preço do artigo cujo código passado é como parâmetro.
 void getStock_Preco(char *codigo, int fdCliente) {
   int codigoInt, fdArt;
   int bytesLidos, cdg;
-  float preco;
+  float preco = 0.00;
   char buffer[1024];
   buffer[0] = 0;
 
@@ -101,23 +101,15 @@ void getStock_Preco(char *codigo, int fdCliente) {
   fdArt = myopen("artigos", O_RDONLY);
   if(fdArt < 0) {
     perror("Erro ao abrir o ficheiro artigos na função getStock_Preco.");
-		_exit(errno);
 	}
 
-  if(!existeCodigo(fdArt, codigoInt, tamArtigo)) {
-    preco = 0.0;
-    quantidade = 0;
-  }
-	else {
-  	if ((bytesLidos = readline(fdArt, buffer, 1)) < 0){ //ver depois para ler mais bytes
-				perror("Erro ao ler do ficheiro artigos na função getStock_Preco.");
-				close(fdArt);
-				return;
+  if(existeCodigo(fdArt, codigoInt, tamArtigo)) {
+  	if ((bytesLidos = readline(fdArt, buffer, 1)) >= 0) { //ver depois para ler mais bytes
+  	  buffer[bytesLidos] = 0;
+  	  sscanf(buffer, "%d %f", &cdg, &preco);
+		  DEBUG_MACRO("O buffer tem %s\n", buffer);
+		  DEBUG_MACRO("O codigo é %d e o preco é %f\n", cdg, preco);
 		}
-  	buffer[bytesLidos] = 0;
-  	sscanf(buffer, "%d %f", &cdg, &preco);
-		DEBUG_MACRO("O buffer tem %s\n", buffer);
-		DEBUG_MACRO("O codigo é %d e o preco é %f\n", cdg, preco);
 	}
 
   sprintf(buffer, formatoArtigo, quantidade, preco);
@@ -235,7 +227,7 @@ void insereVenda(char *codigo, char *quantidade){
 
 	if(fdVendas < 0) {
 	 	perror("Erro a abrir ficheiro vendas");
-		_exit(errno); // TODO: ALTERAR
+		return;
 	}
 
 	//se o tamanho dos comandos for superior ao permitido
@@ -251,7 +243,7 @@ void insereVenda(char *codigo, char *quantidade){
 	if(fdArtigos < 0){
 	 perror("Erro ao abrir ficheiro artigos na função insereVenda.");
 	 close(fdVendas);
-	 _exit(errno); // TODO: ALTERAR
+	 return;
 	}
 
   // TODO: VERIFICAR EM AMBOS ARTIGO E STOCK
@@ -360,17 +352,17 @@ int mandaAgregar(int nBytesLidosAGIni){
     dataHora[0]= 0;
     int byteslidos;
     char bufferino[2048];
+
     int fdVendas = myopen("vendas", O_RDONLY);
     if (fdVendas < 0) {
       perror("Erro ao abrir o ficheiro vendas na função mandaAgregar.");
-      _exit(errno);
+    	_exit(errno);
     }
 
     if((nbytes = lseek(fdVendas, nBytesLidosAGIni, SEEK_SET) ) < 0){
-        perror("Erro no lseek");
+        perror("Erro no lseek na função mandaAgregar.");
         _exit(errno);
     }
-
 
     //codigo do  para mandar fazer o agregador
     int pf[2];
@@ -381,65 +373,65 @@ int mandaAgregar(int nBytesLidosAGIni){
     if (fdAgFileData < 0) {
       perror("Erro no lseek na função mandaAgregar.");
       close(fdVendas);
-  }
+  	}
 
     //fazer com que o filho nasça com o output o ficheiro data
 
-  if (pipe(pf) < 0){
-    perror("Pipe PaiFilho falhou");
-    _exit(errno);
-  }
+	  if (pipe(pf) < 0){
+	    perror("Pipe PaiFilho falhou");
+	    _exit(errno);
+	  }
 
 
-  switch(fork()) {
-      case -1:
-        perror("Fork falhou");
-        _exit(errno);
+	  switch(fork()) {
+	      case -1:
+	        perror("Fork falhou");
+	        _exit(errno);
 
-      case 0:
-          //filho
-          dup2(fdAgFileData,1);
-          close(fdAgFileData);
-          //fechar descritor de escrita no pipe por parte do filho
-          close(pf[1]);
-          //tornar o filho capaz de ler do pipe
-          dup2(pf[0],0);
-          close(pf[0]);
+	      case 0:
+	          //filho
+	          dup2(fdAgFileData,1);
+	          close(fdAgFileData);
+	          //fechar descritor de escrita no pipe por parte do filho
+	          close(pf[1]);
+	          //tornar o filho capaz de ler do pipe
+	          dup2(pf[0],0);
+	          close(pf[0]);
 
-					#if AGREGAR_FICHEIRO
-              if((execlp("./agf", "./agf", NULL))==-1){
-                  perror("Erro na execucao do execlp do agf");
-                  _exit(errno);
-              }
-          #else
-              if((execlp("./ag","./ag",NULL))==-1){
-                  perror("Erro na execucao do execlp do ag");
-                  _exit(errno);
-              }
-          #endif
+						#if AGREGAR_FICHEIRO
+	              if((execlp("./agf", "./agf", NULL))==-1){
+	                  perror("Erro na execucao do execlp do agf");
+	                  _exit(errno);
+	              }
+	          #else
+	              if((execlp("./ag","./ag",NULL))==-1){
+	                  perror("Erro na execucao do execlp do ag");
+	                  _exit(errno);
+	              }
+	          #endif
 
-          _exit(errno);
+	          _exit(errno);
 
-      default:
-          //pai
-          //fechar descritor de leitura do pipe por parte do pai
-          close(pf[0]);
+	    default:
+	          //pai
+	          //fechar descritor de leitura do pipe por parte do pai
+	          close(pf[0]);
 
 
-          //escrever para o pipe
-          while((byteslidos=readline(fdVendas,bufferino,1))>0){
+	          //escrever para o pipe
+	          while((byteslidos=readline(fdVendas,bufferino,1))>0){
 
-            bufferino[byteslidos-1]='\n';
-            bufferino[byteslidos]='\0';
-            if(mywrite(pf[1],bufferino,byteslidos)<0) {
-                perror("Erro na escrita do ficheiro vendas para o pipe.");
-            }
-            posicao++;
-          }
-          close(pf[1]);
-    }
+	            bufferino[byteslidos-1]='\n';
+	            bufferino[byteslidos]='\0';
+	            if(mywrite(pf[1],bufferino,byteslidos)<0) {
+	                perror("Erro na escrita do ficheiro vendas para o pipe.");
+	            }
+	            posicao++;
+	          }
+	          close(pf[1]);
+	    }
 
-return posicao;
+			return posicao;
 
 }
 
@@ -582,9 +574,7 @@ void processaComandos(char buffer[], char *comandos, int fdCliente) {
    				getStock_Preco(codigoArt, fdCliente);
    				DEBUG_MACRO("estou aqui\n");
    			}
-
 	}
-
 }
 
 
@@ -626,7 +616,7 @@ int myreadServidor(int fildes, void *buf, int nbytes) {
           return byteslidos;
         }
         else if (byteslidos != 0 && errno != ECONNRESET && errno != EEXIST) {
-					DEBUG_MACRO("PORRA %d %d\n", errno, byteslidos);
+					DEBUG_MACRO("Bytes lidos %d %d\n", errno, byteslidos);
           return byteslidos;
         }
     }
