@@ -1,12 +1,13 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <stdio.h>
+#include <math.h>
 #include <stdlib.h>
 #include <errno.h>
 #include <string.h>
 #include <sys/wait.h>
-#include <time.h>
 #include <signal.h>
+
 #include "debug.h"
 #include "aux.h"
 
@@ -34,7 +35,7 @@ void insereNome(char *nome){
   if(mywrite(fd, string, qtos) < 0) {
     perror("Erro ao escrever no ficheiro strings na função insereNome.");
     close(fd);
-    return;
+    _exit(errno);
   }
 
   free(nome_str);
@@ -218,6 +219,23 @@ void alteraNome(char *codigo, char *novoNome) {
   close(fdArt);
 }
 
+int alteraPrecoCache(int codigoProduto, float preco) {
+
+  char buffer[2048];
+  int bytesescritos = 0;
+  buffer[0] = 0;
+
+  int fd = open("precosAlterados.txt", O_CREAT | O_WRONLY | O_TRUNC, PERMISSOES);
+
+  sprintf(buffer, "%d %f", codigoProduto, preco);
+
+  bytesescritos = write(fd, buffer, sizeof(codigoProduto) + sizeof(preco) + 1);
+
+  close(fd);
+
+  return bytesescritos;
+
+}
 
 /*
 Função que altera o preço de um artigo no fiheiro artigos.
@@ -253,6 +271,7 @@ void alteraPreco(char *codigo, char *novoPreco){
   }
 
   else {
+
       //já está na linha do artigo pretendido
       if ((nbytes = lseek (fdArt, (codigoInt-1) * tamArtigo, SEEK_SET)) < 0) {
         perror("Erro ao fazer lseek na função alteraPreco.");
@@ -276,6 +295,8 @@ void alteraPreco(char *codigo, char *novoPreco){
 
       sprintf(buffer, formatoArtigo, linha, preco);
 
+      alteraPrecoCache(codigoInt, preco);
+
       DEBUG_MACRO("Buffer %s\n", buffer);
 
 
@@ -294,7 +315,6 @@ void alteraPreco(char *codigo, char *novoPreco){
       close(fdArt);
   }
 }
-
 
 /*
 Função que envia um sinal ao servidor de que foi inserido um novo artigo.
@@ -335,13 +355,13 @@ void ma(int fdPipeComum){
   char buffer[2048];
   buffer[0]=0;
 
-  sprintf(buffer, "p%d@%s",pid,letra);
+  sprintf(buffer, "p%d@%s",pid,letra); 
 
   int qts= strlen(buffer);
 
   mywrite(fdPipeComum,buffer,qts);
   DEBUG_MACRO("o que estou a enviar para o pipe comum %s\n",buffer );
-}
+} 
 
 
 
@@ -356,13 +376,13 @@ int main() {
   nome_codigo[0] = 0;
   char preco_nome[500];
   preco_nome[0] = 0;
+  int i;
 
   const char *files[3] = {"strings", "artigos", "stocks"};
 
   abrir_log("log_ma");
 
   criaFicheiros(files, 3);
-
 
   DEBUG_MACRO("Comecar a ler do stdin");
   while(byteslidos > 0) {   //TODO: ler mais do que um byte
@@ -372,12 +392,14 @@ int main() {
       break;
 
     buffer[byteslidos - 1] = '\n';
+
     buffer[byteslidos] = 0;
 
     sscanf(buffer, "%s %s %s", letra, nome_codigo, preco_nome);
 
     if(strcmp(letra, "i") == 0) {
-      if(strlen(preco_nome) > tamPreco) {
+      if(strlen(preco_nome) > 7) {
+        DEBUG_MACRO("Produto: %s com preço num formato maior do que o permitido: %s.\n", nome_codigo, preco_nome);
       }
       else {
         insereArtigo(preco_nome, nome_codigo);
@@ -386,26 +408,25 @@ int main() {
     }
 
     if(strcmp(letra, "n") == 0) {
-      if(strlen(nome_codigo) > tamCodigo) {
+      if(strlen(nome_codigo) > 7) {
         DEBUG_MACRO("Código num formato maior do que o permitido: %s.\n", nome_codigo);
       }
       else alteraNome(nome_codigo, preco_nome);
     }
 
     if(strcmp(letra, "p") == 0){
-        if(strlen(preco_nome) > tamPreco || strlen(nome_codigo) > tamCodigo) {
+        if(strlen(preco_nome) > 7 || strlen(nome_codigo) > 7) {
           DEBUG_MACRO("Produto com código: %s com preço num formato superior ao permitido: %s.\n", nome_codigo, preco_nome);
         }
         else alteraPreco(nome_codigo, preco_nome);
     }
 
     if(strcmp(letra, "a") == 0){ //Aqui tb tem de se ter em atenção que o tamanho do preço não pode exceder
-
-
+        
         int fdPipeComum = myopen("pipeComum", O_WRONLY);
         //passar o comando a para o pipe comum
-        ma(fdPipeComum);
-
+        ma(fdPipeComum);         
+        
     }
   }
 

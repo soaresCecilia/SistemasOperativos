@@ -8,8 +8,16 @@ typedef struct agrega{
   float preco;
 } * dados;
 
+typedef struct artigoVisitado {
+
+	int codArtigo;
+	int vezesVisitado;
+	float precoArtigo;
+
+} * visitado;
 
 #define TRUE  1
+#define CACHE 1
 
 /*
 Macro para permitir blindar os ficheiros eficientemente quando são criados.
@@ -20,6 +28,8 @@ Macro para permitir blindar os ficheiros eficientemente quando são criados.
 #define tamStocks 16
 #define tamVendas 24
 
+#define tamCache  100
+
 #define tamQuantidade  7
 #define tamPreco       7
 #define tamCodigo      7
@@ -27,7 +37,6 @@ Macro para permitir blindar os ficheiros eficientemente quando são criados.
 #define formatoArtigo "%7d %7.2f\n"
 #define formatoStocks "%7d %7d\n"
 #define formatoVendas "%7d %7d %7.2f\n"
-
 
 int myread(int fildes, void *buf, int nbytes);
 

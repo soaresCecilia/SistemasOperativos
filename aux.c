@@ -15,30 +15,19 @@ Função que ignora os erros EAGAIN e EINTR quando é chamada a system
 call read.
 A função retorna o número de bytes lidos.
 */
-int myread(int fildes, void *buffer, int total_bytes) {
-  int total_bytes_lidos = 0;
-  int bytes_lidos = 0;
-  void *buffer_atual = buffer;
-  int ler_bytes = total_bytes;
-  int sv_errno = 0;
+int myread(int fildes, void *buf, int nbytes) {
+  int byteslidos;
 
-  while(TRUE){
-    bytes_lidos = read(fildes, buffer_atual, ler_bytes);
-    sv_errno = errno;
+    while(TRUE){
+        byteslidos = read(fildes, buf, nbytes);
 
-    if (bytes_lidos >= 0) {
-      ler_bytes -= bytes_lidos;
-      buffer_atual += bytes_lidos;
-      total_bytes_lidos += bytes_lidos;
+        if (byteslidos >= 0) {
+          return byteslidos;
+        }
+        else if (errno != EAGAIN && errno != EINTR) {
+          return byteslidos;
+        }
     }
-
-    if (ler_bytes == 0 || bytes_lidos == 0) {
-        return total_bytes_lidos;
-    }
-    else if (sv_errno != EAGAIN && sv_errno != EINTR) {
-      return bytes_lidos;
-    }
-  }
 }
 
 
@@ -69,28 +58,17 @@ Função que ignora os erros EAGAIN e EINTR quando é chamada a system
 call write.
 A função retorna o número de bytes escritos.
 */
-int mywrite(int fildes, void *buffer, int total_bytes) {
-  int total_bytes_escritos = 0;
-  int bytes_escritos = 0;
-  void *buffer_atual = buffer;
-  int escrever_bytes = total_bytes;
-  int sv_errno = 0;
+int mywrite(int fildes, void *buf, int nbytes) {
+  int bytesEscritos;
 
-  while(TRUE){
-    bytes_escritos = write(fildes, buffer_atual, escrever_bytes);
-    sv_errno = errno;
+    while(TRUE){
+        bytesEscritos = write(fildes, buf, nbytes);
 
-    if (bytes_escritos >= 0) {
-      escrever_bytes -= bytes_escritos;
-      buffer_atual += bytes_escritos;
-      total_bytes_escritos += bytes_escritos;
-    }
+        if (bytesEscritos >= 0)
+          return bytesEscritos;
 
-    if (escrever_bytes == 0 || bytes_escritos == 0) {
-        return total_bytes_escritos;
-    }
-    else if (sv_errno != EAGAIN && sv_errno != EINTR)
-      return bytes_escritos;
+        else if (errno != EAGAIN && errno != EINTR)
+          return bytesEscritos;
     }
 }
 
@@ -151,10 +129,12 @@ int getQuantidade(char *codigo) {
 
   int codigoInt = atoi(codigo);
 
+  DEBUG_MACRO("Código é %d\n", codigoInt);
+
   int fdStocks = myopen("stocks", O_RDONLY);
 	if(fdStocks < 0){
 	 perror("Erro ao abrir ficheiro stocks");
-   return quantidade;
+   _exit(errno);
 	}
 
 	if (!existeCodigo(fdStocks, codigoInt, tamStocks)) {
@@ -167,10 +147,13 @@ int getQuantidade(char *codigo) {
     if(bytesLidos < 0) {
       perror("Erro ao ler dos stocks");
       close(fdStocks);
-      return quantidade;
+      return -1;
     }
 
+  DEBUG_MACRO("Conteúdo do buffer getQuantidade %s\n", buffer);
+
   sscanf(buffer,"%d %d", &codigoArt, &quantidade);
+
 
   return quantidade;
 }
@@ -219,6 +202,7 @@ int criaPipeEspecifico() {
 
   if (mkfifo(buffer, PERMISSOES) < 0) {
     perror("Erro ao criar o pipe cliente especifico.");
+    DEBUG_MACRO("Nome do pipe %s\n", buffer);
     _exit(errno);
   }
 
@@ -245,26 +229,24 @@ void fechaPipeEspecifico(int fd) {
 
 /*
 Função que verifica se o código introduzido existe no ficheiro.
-A função retorna 1 se o artigo existe, 0 se o mesmo não existe ou
-se ocorreu algum erro.
+A função retorna 1 se o artigo existe, 0 se o mesmo não existe e
+-1 se ocorreu algum erro.
 */
 int existeCodigo(int fd, int codigoInt, int tamformato) {
   int resultado = 0, nbytes, bytesfim;
 
-  if ((bytesfim = lseek(fd, 0, SEEK_END)) < 0) {
-    perror("Erro no lseek a partir do fim na função existeCodigo.");
-    return 0;
-  }
+if ((bytesfim = lseek(fd, 0, SEEK_END)) < 0) {
+  perror("Erro no lseek a partir do fim na função existeCodigo.");
+  return -1;
+}
 
-  if ((nbytes = lseek(fd, (codigoInt - 1) * tamformato, SEEK_SET)) < 0) {
-    perror("Erro no lseek da posicao do artigo na função existeCodigo.");
-    return 0;
-  }
+if ((nbytes = lseek(fd, (codigoInt - 1) * tamformato, SEEK_SET)) < 0) {
+  perror("Erro no lseek da posicao do artigo na função existeCodigo.");
+  return -1;
+}
 
-  //se o artigo não existir devolve preço 0 o nbytes tem de ser menor que bytesfim não pode ser igual
-  if (nbytes < bytesfim) {
-    resultado = 1;
-  }
-  
+//se o artigo não existir devolve preço 0 o nbytes tem de ser menor que bytesfim não pode ser igual
+if (nbytes < bytesfim) resultado = 1;
+
   return resultado;
 }
