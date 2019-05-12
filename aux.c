@@ -15,19 +15,30 @@ Função que ignora os erros EAGAIN e EINTR quando é chamada a system
 call read.
 A função retorna o número de bytes lidos.
 */
-int myread(int fildes, void *buf, int nbytes) {
-  int byteslidos;
+int myread(int fildes, void *buffer, int total_bytes) {
+  int total_bytes_lidos = 0;
+  int bytes_lidos = 0;
+  void *buffer_atual = buffer;
+  int ler_bytes = total_bytes;
+  int sv_errno = 0;
 
-    while(TRUE){
-        byteslidos = read(fildes, buf, nbytes);
+  while(TRUE){
+    bytes_lidos = read(fildes, buffer_atual, ler_bytes);
+    sv_errno = errno;
 
-        if (byteslidos >= 0) {
-          return byteslidos;
-        }
-        else if (errno != EAGAIN && errno != EINTR) {
-          return byteslidos;
-        }
+    if (bytes_lidos >= 0) {
+      ler_bytes -= bytes_lidos;
+      buffer_atual += bytes_lidos;
+      total_bytes_lidos += bytes_lidos;
     }
+
+    if (ler_bytes == 0 || bytes_lidos == 0) {
+        return total_bytes_lidos;
+    }
+    else if (sv_errno != EAGAIN && sv_errno != EINTR) {
+      return bytes_lidos;
+    }
+  }
 }
 
 
@@ -58,17 +69,28 @@ Função que ignora os erros EAGAIN e EINTR quando é chamada a system
 call write.
 A função retorna o número de bytes escritos.
 */
-int mywrite(int fildes, void *buf, int nbytes) {
-  int bytesEscritos;
+int mywrite(int fildes, void *buffer, int total_bytes) {
+  int total_bytes_escritos = 0;
+  int bytes_escritos = 0;
+  void *buffer_atual = buffer;
+  int escrever_bytes = total_bytes;
+  int sv_errno = 0;
 
-    while(TRUE){
-        bytesEscritos = write(fildes, buf, nbytes);
+  while(TRUE){
+    bytes_escritos = write(fildes, buffer_atual, escrever_bytes);
+    sv_errno = errno;
 
-        if (bytesEscritos >= 0)
-          return bytesEscritos;
+    if (bytes_escritos >= 0) {
+      escrever_bytes -= bytes_escritos;
+      buffer_atual += bytes_escritos;
+      total_bytes_escritos += bytes_escritos;
+    }
 
-        else if (errno != EAGAIN && errno != EINTR)
-          return bytesEscritos;
+    if (escrever_bytes == 0 || bytes_escritos == 0) {
+        return total_bytes_escritos;
+    }
+    else if (sv_errno != EAGAIN && sv_errno != EINTR)
+      return bytes_escritos;
     }
 }
 
@@ -147,6 +169,7 @@ int getQuantidade(char *codigo) {
       close(fdStocks);
       return -1;
     }
+
 
   sscanf(buffer,"%d %d", &codigoArt, &quantidade);
 

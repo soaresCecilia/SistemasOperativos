@@ -26,3 +26,6 @@ aux: debug aux
 
 clean:
 	rm -f *.o ma sv cv ag agf
+
+clean-all-data:
+	rm -f vendas artigos strings stocks log_* > /dev/null 2>&1 

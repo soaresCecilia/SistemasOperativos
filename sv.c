@@ -318,7 +318,7 @@ int criaPipeComum(void) {
     }
   }
 
-  if ((fd = myopen("pipeComum", O_RDONLY)) < 0){
+  if ((fd = myopen("pipeComum", O_RDWR)) < 0){
     perror("Erro ao abrir o ficheiro pipeComum");
     _exit(errno);
   }
@@ -625,7 +625,7 @@ int myreadServidor(int fildes, void *buf, int nbytes) {
         if (byteslidos > 0) {
           return byteslidos;
         }
-        else if (errno != ECONNRESET && errno != EEXIST) {
+        else if (byteslidos != 0 && errno != ECONNRESET && errno != EEXIST) {
 					DEBUG_MACRO("PORRA %d %d\n", errno, byteslidos);
           return byteslidos;
         }
@@ -676,7 +676,6 @@ void servidor(int fdComum) {
 			processaComandos(buffer, comandos, fdCliente);
 	}
 }
-
 /*
 Função que inicializa a zero no ficheiro de stocks a quantidade de
 todos os artigos que já foram anteriormente inseridos no ficheiro artigos.
@@ -686,7 +685,7 @@ void setStocks(int signum) {
 	char buffer[100];
 	buffer[0] = 0;
 
-	(void)signum;
+	(void) signum;
 
 	fdStocks = myopen("stocks", O_RDWR);
 	if(fdStocks < 0) {
@@ -705,14 +704,12 @@ void setStocks(int signum) {
  fdArt = myopen("artigos", O_RDONLY);
 	if (fdArt < 0) {
 		perror("Erro ao abrir os artigos na função setStocks.");
-		close(fdStocks);
 		close(fdArt);
-		_exit(errno);
+		return;
 	}
 
 	if((nbytesArt = lseek(fdArt, 0, SEEK_END)) < 0) {
 			perror("Erro ao fazer lseek no ficheiro artigos na função setStocks.");
-			close(fdStocks);
 			close(fdArt);
 			return;
 	}
@@ -723,6 +720,7 @@ void setStocks(int signum) {
 
 	int linhasStocks = nbytesStocks / tamStocks;
 
+  DEBUG_MACRO("Atualizar stocks: #stocks %d #artigos %d\n", linhasStocks, linhasArt);
 	if(linhasStocks < linhasArt) {
 		for (int i = (linhasStocks + 1); i <= linhasArt; i++) {
 				sprintf(buffer, "%d", i);
@@ -730,7 +728,6 @@ void setStocks(int signum) {
 				insereStock(buffer, "0");
 		}
 	}
-
 }
 
 //main
