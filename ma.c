@@ -1,11 +1,13 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <stdio.h>
+#include <math.h>
 #include <stdlib.h>
 #include <errno.h>
 #include <string.h>
 #include <sys/wait.h>
 #include <signal.h>
+
 #include "debug.h"
 #include "aux.h"
 
@@ -217,6 +219,23 @@ void alteraNome(char *codigo, char *novoNome) {
   close(fdArt);
 }
 
+int alteraPrecoCache(int codigoProduto, float preco) {
+
+  char buffer[2048];
+  int bytesescritos = 0;
+  buffer[0] = 0;
+
+  int fd = open("precosAlterados.txt", O_CREAT | O_WRONLY | O_TRUNC, PERMISSOES);
+
+  sprintf(buffer, "%d %f", codigoProduto, preco);
+
+  bytesescritos = write(fd, buffer, sizeof(codigoProduto) + sizeof(preco) + 1);
+
+  close(fd);
+
+  return bytesescritos;
+
+}
 
 /*
 Função que altera o preço de um artigo no fiheiro artigos.
@@ -252,6 +271,7 @@ void alteraPreco(char *codigo, char *novoPreco){
   }
 
   else {
+
       //já está na linha do artigo pretendido
       if ((nbytes = lseek (fdArt, (codigoInt-1) * tamArtigo, SEEK_SET)) < 0) {
         perror("Erro ao fazer lseek na função alteraPreco.");
@@ -274,6 +294,8 @@ void alteraPreco(char *codigo, char *novoPreco){
       DEBUG_MACRO("Linha %d Preço antigo %f\n", linha, precoAntigo);
 
       sprintf(buffer, formatoArtigo, linha, preco);
+
+      alteraPrecoCache(codigoInt, preco);
 
       DEBUG_MACRO("Buffer %s\n", buffer);
 
@@ -354,13 +376,13 @@ int main() {
   nome_codigo[0] = 0;
   char preco_nome[500];
   preco_nome[0] = 0;
+  int i;
 
   const char *files[3] = {"strings", "artigos", "stocks"};
 
   abrir_log("log_ma");
 
   criaFicheiros(files, 3);
-
 
   DEBUG_MACRO("Comecar a ler do stdin");
   while(byteslidos > 0) {   //TODO: ler mais do que um byte

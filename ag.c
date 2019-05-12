@@ -39,6 +39,17 @@ int aumentaEstrutura(dados *info, int tam){
   return novotam;
 }
 
+int fsize1(char * ficheiro){
+    FILE * fp = fopen(ficheiro, "r");
+
+    int prev=ftell(fp);
+    fseek(fp, 0L, SEEK_END);
+    int sz=ftell(fp);
+    fseek(fp,prev,SEEK_SET); //voltar ao inicio do ficheiro
+    fclose(fp);
+    return sz;
+}
+
 /*
 Função que agrega as entradas recebidas pelo STDIN
 no formato do ficheiro de vendas, até end-of-file, contando
