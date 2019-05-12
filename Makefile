@@ -1,7 +1,7 @@
 CC = gcc
 CFLAGS = -W -Wall -g
 
-all: ma sv cv ag agf gerar-artigos gerar-op-artigos
+all: ma sv cv ag agf gerar-artigos gerar-op-artigos gerar-op-vendas
 
 ma: debug aux ma.c
 	$(CC) $(CFLAGS) ma.c aux.o debug.o -o ma
@@ -23,6 +23,9 @@ gerar-artigos: gerar-dados gerar-artigos.c
 
 gerar-op-artigos: gerar-dados gerar-op-artigos.c
 	$(CC) $(CFLAGS) gerar-op-artigos.c gerar-dados.o -o gerar-op-artigos
+
+gerar-op-vendas: gerar-dados gerar-op-vendas.c
+	$(CC) $(CFLAGS) gerar-op-vendas.c gerar-dados.o -o gerar-op-vendas
 
 gerar-dados: gerar-dados.c
 	$(CC) $(CFLAGS) -c gerar-dados.c
