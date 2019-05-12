@@ -1,7 +1,7 @@
 CC = gcc
 CFLAGS = -W -Wall -g
 
-all: ma sv cv ag agf
+all: ma sv cv ag agf gerar-artigos
 
 ma: debug aux ma.c
 	$(CC) $(CFLAGS) ma.c aux.o debug.o -o ma
