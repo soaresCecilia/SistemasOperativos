@@ -81,9 +81,9 @@ o código, a quantidade e o preço sejam todos maiores que 0.
 */
 void agregaVenda(char *buffer, int linha, int fdAgregador){
   int codigoV, quantidadeV, codigoA, quantidadeA, n;
-  float precoV, precoA;
+  double precoV, precoA;
 
-  sscanf(buffer, "%d %d %f", &codigoV, &quantidadeV, &precoV);
+  sscanf(buffer, "%d %d %lf", &codigoV, &quantidadeV, &precoV);
 
   if ((n = lseek(fdAgregador, 0, SEEK_SET)) < 0) {
     perror("Erro no lskeek na função agregaVenda1");
@@ -103,7 +103,7 @@ void agregaVenda(char *buffer, int linha, int fdAgregador){
 
       readline(fdAgregador, buffer, tamVendas);
 
-      sscanf(buffer, "%d %d %f", &codigoA, &quantidadeA, &precoA);
+      sscanf(buffer, "%d %d %lf", &codigoA, &quantidadeA, &precoA);
 
       quantidadeA = quantidadeV + quantidadeA;
 
@@ -130,7 +130,7 @@ Função que insere uma venda no ficheiro agregador caso o artigo em causa
 ainda não tenha mais nenhuma venda anterior para ser agregada.
 Também aqui o código, a quantidade e o preço sejam todos maiores que 0.
 */
-void insereAgregador(int codigo, int quantidade, float preco, int fdAgregador) {
+void insereAgregador(int codigo, int quantidade, double preco, int fdAgregador) {
   char buffer[2048];
   buffer[0] = 0;
   int byte;
@@ -161,14 +161,14 @@ void populaFicheiro(int fdAgregador){
   codigoA[0] = 0;
   int byteslidos = 1, flag = 1;
   int codigo, quantidadeA, linha = 0;
-  float precoA;
+  double precoA;
 
 
   while (byteslidos > 0) {
       if (readline(STDIN_FILENO, buffer, 1) == 0)
           break;
 
-      sscanf(buffer, "%s %d %f", codigoA, &quantidadeA, &precoA);
+      sscanf(buffer, "%s %d %lf", codigoA, &quantidadeA, &precoA);
 
       linha = contaLinhas(codigoA, &flag, fdAgregador);
 

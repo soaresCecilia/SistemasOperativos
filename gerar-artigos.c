@@ -16,7 +16,7 @@ int main(int argv, char **argc) {
   num = num * size_nome;
   for (int it = 0; it < num ; it++) {
     int idx = it % size_nome;
-    printf("i %s-%d %7.2f\n", nome_base[idx], it, preco_base[idx]);
+    printf("i %s-%d %15.2f\n", nome_base[idx], it, preco_base[idx]);
   }
   return 0;
 }

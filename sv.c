@@ -24,7 +24,7 @@ static int posicaoLivre = 0;
 /*
 Função que inicializa a estrutura artigoVisitado.
 */
-visitado inicializaVisitado(int cod, float precoArt) {
+visitado inicializaVisitado(int cod, double precoArt) {
 
   visitado novo = malloc(sizeof(struct artigoVisitado));
 
@@ -54,7 +54,7 @@ Função que atualiza os artigos inseridos na cache, sendo que se o artigo não
 existe na cache este é inserido no final da cache e todos os demais artigos
 inseridos na cache são inseridos no índice anterior do array.
 */
-void atualizaMaisVisitados(int codigoArtigo, int flag, float preco, visitado artigosVisitados[]) {
+void atualizaMaisVisitados(int codigoArtigo, int flag, double preco, visitado artigosVisitados[]) {
 
   int i;
   int encontrado = 0;
@@ -210,7 +210,7 @@ e o preço do artigo cujo código passado é como parâmetro.
 void getStock_Preco(char *codigo, int fdCliente, visitado artigosVisitados[]) {
   int codigoInt, fdArt;
   int bytesLidos, cdg;
-  float preco = 0.00;
+  double preco = 0.00;
   char buffer[1024];
   buffer[0] = 0;
 	int existeArray = -1;
@@ -241,7 +241,7 @@ void getStock_Preco(char *codigo, int fdCliente, visitado artigosVisitados[]) {
   else if(existeCodigo(fdArt, codigoInt, tamArtigo)) {
   	if ((bytesLidos = readline(fdArt, buffer, tamArtigo)) >= 0) { //ver depois para ler mais bytes
   	  buffer[bytesLidos] = 0;
-  	  sscanf(buffer, "%d %f", &cdg, &preco);
+  	  sscanf(buffer, "%d %lf", &cdg, &preco);
 		  DEBUG_MACRO("O buffer tem %s\n", buffer);
 		  DEBUG_MACRO("O codigo é %d e o preco é %f\n", cdg, preco);
 			atualizaMaisVisitados(codigoInt, 0, preco, artigosVisitados);
@@ -354,7 +354,7 @@ disponível em stock vende a quantidade do produto que tem em stock.
 void insereVenda(char *codigo, char *quantidade){
 	int fdVendas, fdArtigos, codigoInt;
   int quantidadeInt, codNome;
-	float preco, precoTotalVenda;
+	double preco, precoTotalVenda;
 	char buff[2048];
 	char vendas[100];
 
@@ -396,7 +396,7 @@ void insereVenda(char *codigo, char *quantidade){
 		return;
 	}
 
-	sscanf(buff,"%d %f", &codNome, &preco);
+	sscanf(buff,"%d %lf", &codNome, &preco);
 
   //consultar o stocks para ver quantos artigos existem em stock
   int emStock = getQuantidade(codigo);
@@ -409,11 +409,11 @@ void insereVenda(char *codigo, char *quantidade){
 
 	//se tiver menos produtos em stock vende só os que tiver
   if(emStock > 0 && emStock < quantidadeInt) {
-    precoTotalVenda = ((float)emStock) * preco;
+    precoTotalVenda = ((double)emStock) * preco;
     sprintf(vendas, formatoVendas, codigoInt, emStock, precoTotalVenda);
   }
   else {
-		precoTotalVenda = ((float)quantidadeInt) * preco;
+		precoTotalVenda = ((double)quantidadeInt) * preco;
 		sprintf(vendas, formatoVendas, codigoInt, quantidadeInt, precoTotalVenda);
   }
 
@@ -664,12 +664,12 @@ void verificaAlteracaoCache(visitado artigosVisitados[]) {
 
   int fd = open("precosAlterados", O_RDONLY);
   int linha;
-  float precoAntigo;
+  double precoAntigo;
   int existe;
 
   char buffer[2048];
 
-  size_t byteslidos = read(fd, buffer, sizeof(int) + sizeof(float) + 1);
+  size_t byteslidos = read(fd, buffer, sizeof(int) + sizeof(double) + 1);
 
   if(fd < 0)
     return;
@@ -684,7 +684,7 @@ void verificaAlteracaoCache(visitado artigosVisitados[]) {
 
     readline(fd, buffer, 1);
 
-    sscanf(buffer, "%d %f", &linha, &precoAntigo);
+    sscanf(buffer, "%d %lf", &linha, &precoAntigo);
 
     existe = existeProdutoMaisVisitado(linha, artigosVisitados);
 

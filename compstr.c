@@ -77,7 +77,7 @@ void alteraNrArtigo(int fdArtigos, char* novoNumeroLinhaCompactarS, char* nrLinh
 
 	while ((byteslidos = readline(fdArtigos, buffer, 1)) > 0) {
 
-       	float precoArtigo=0;
+       	double precoArtigo=0;
        	char bufferArtigos[2048];
    		int conta = 0;
   		char* array[2];
@@ -100,7 +100,7 @@ void alteraNrArtigo(int fdArtigos, char* novoNumeroLinhaCompactarS, char* nrLinh
 		if((compara= strcmp(array[0], nrLinhaStrings))==0){
 		
 			sscanf(novoNumeroLinhaCompactarS,"%d",&novoNumeroLinhaCompactar);
-			sscanf(array[1],"%f",&precoArtigo);
+			sscanf(array[1],"%lf",&precoArtigo);
 
   			sprintf(bufferArtigos,formatoArtigo,novoNumeroLinhaCompactar, precoArtigo);
   			int tamBufferArtigos= strlen(bufferArtigos);

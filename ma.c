@@ -15,7 +15,7 @@
 /*
 Função que altera o valor do preço no ficheiro precosAlterados.
 */
-int alteraPrecoCache(int codigoProduto, float preco) {
+int alteraPrecoCache(int codigoProduto, double preco) {
 
   char buffer[2048];
   int bytesescritos = 0;
@@ -115,7 +115,7 @@ int contaLinhasStr(char *str, int *flag) {
 /*
 Função que insere um artigo no ficheiro artigos. É inserido um artigo
 por linha, sendo que cada artigo é composto por um inteiro que representa
-a linha que identifica o seu nome no ficheiro strings e um float, com
+a linha que identifica o seu nome no ficheiro strings e um double, com
 duas casa decimais, que indica o seu preço. A função devolve o código do
 artigo.
 */
@@ -124,13 +124,19 @@ int insereArtigo(char *preco, char *nome){
   char codigo[100];
   int flag = 0;
   char artigo[100];
-  double preco_float = atof(preco);
+  double preco_double = 0.00;
+
+  if(*preco == '-') {
+    return codigoInt;
+  }
+
+  preco_double = atof(preco);
 
   linha = contaLinhasStr(nome, &flag);
 
   if(flag != 0) insereNome(nome);
 
-  sprintf(artigo, formatoArtigo, linha, preco_float);
+  sprintf(artigo, formatoArtigo, linha, preco_double);
 
   fd = myopen("artigos", O_WRONLY | O_APPEND);
 
@@ -179,7 +185,7 @@ void alteraNome(char *codigo, char *novoNome) {
   int linhaNome = 0, linhaAntiga = 0;
   int flag = 0;
   char buffer[2048];
-  float preco;
+  double preco;
   buffer[0] = 0;
 
   int codigoInt = atoi(codigo);
@@ -211,7 +217,7 @@ void alteraNome(char *codigo, char *novoNome) {
 
   DEBUG_MACRO("Leu dos artigos Buffer %s\n", buffer);
 
-  sscanf(buffer, "%d %f", &linhaAntiga, &preco);
+  sscanf(buffer, "%d %lf", &linhaAntiga, &preco);
 
   buffer[0] = 0;
 
@@ -249,14 +255,14 @@ ignora essa pretensão.
 void alteraPreco(char *codigo, char *novoPreco){
   char buffer[2048];
   int linha, nbytes;
-  float precoAntigo;
+  double precoAntigo;
   buffer[0] = 0;
 
 
   int codigoInt = atoi(codigo);
   DEBUG_MACRO("Codigo %d\n", codigoInt);
 
-  float preco = atof(novoPreco);
+  double preco = atof(novoPreco);
 
   //não aceita preços negativos
   if(preco < 0) return;
@@ -289,7 +295,7 @@ void alteraPreco(char *codigo, char *novoPreco){
         return;
       }
 
-      sscanf(buffer, "%d %f", &linha, &precoAntigo);
+      sscanf(buffer, "%d %lf", &linha, &precoAntigo);
       buffer[0]= 0;
 
       DEBUG_MACRO("Linha %d Preço antigo %f\n", linha, precoAntigo);

@@ -5,7 +5,7 @@
 
 typedef struct agrega{
   int quantidade;
-  float preco;
+  double preco;
 } * dados;
 
 
@@ -13,7 +13,7 @@ typedef struct artigoVisitado {
 
 	int codArtigo;
 	int vezesVisitado;
-	float precoArtigo;
+	double precoArtigo;
 
 } * visitado;
 
@@ -29,18 +29,17 @@ Macro para permitir blindar os ficheiros eficientemente quando são criados.
 */
 #define PERMISSOES 0640
 
-#define tamArtigo 16
-#define tamStocks 16
-#define tamVendas 24
-
 #define tamQuantidade  7
-#define tamPreco       7
+#define tamPreco       12
 #define tamCodigo      7
 
-#define formatoArtigo "%7d %7.2f\n"
+#define formatoArtigo "%7d %12.2f\n"
 #define formatoStocks "%7d %7d\n"
-#define formatoVendas "%7d %7d %7.2f\n"
+#define formatoVendas "%7d %7d %12.2f\n"
 
+#define tamArtigo (tamCodigo + tamPreco + 2)
+#define tamStocks (tamCodigo + tamQuantidade + 2)
+#define tamVendas (tamCodigo + tamQuantidade + tamPreco + 3)
 
 int myread(int fildes, void *buf, int nbytes);
 

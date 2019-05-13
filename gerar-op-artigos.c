@@ -17,7 +17,7 @@ int main(int argv, char **argc) {
   for (int it = 0; it < num_max ; it++) {
     int idx = rand() % size_nome;
     printf("n %d %s-%d\n", idx, nome_base[idx], it);
-    printf("p %d %7.2f\n", idx, preco_base[idx]);
+    printf("p %d %12.2f\n", idx, preco_base[idx]);
   }
   return 0;
 }

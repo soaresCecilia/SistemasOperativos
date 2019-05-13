@@ -18,7 +18,7 @@ const char *nome_base[] = {
   "caneca"
 };
 
-const float preco_base[] = {
+const double preco_base[] = {
   10.00,
   11.00,
   12.00,
@@ -31,8 +31,8 @@ const float preco_base[] = {
   20.00,
   21.00,
   22.00,
-  12345678.00,
-  24.00,
+  1234567899.00,
+  -24.00,
   25.00
 };
 

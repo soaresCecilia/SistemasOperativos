@@ -56,12 +56,12 @@ dados agregarVendas(dados info, int *tam) {
   char buffer[2048];
   buffer[0] = 0;
   int byteslidos = 0, cod, quant;
-  float montante;
+  double montante;
 
   //TODO: ler mais do que 1 byte
   while ((byteslidos = readline(STDIN_FILENO, buffer, 1)) > 0) {
 
-      sscanf(buffer, "%d %d %f", &cod, &quant, &montante);
+      sscanf(buffer, "%d %d %lf", &cod, &quant, &montante);
       if(cod >= *tam) {
         info = aumentaEstrutura(info, tam, cod);
       }
