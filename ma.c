@@ -11,6 +11,95 @@
 #include "debug.h"
 #include "aux.h"
 
+/*
++Conta numero total de strings realmente utilizadas
++*/
+int stringsUsadas(int totalStrings){
+
+    char buffer[2048];
+    buffer[0]=0;
+    int nLido = 0, total;
+
+    int fdArtigos= myopen("artigos", O_RDONLY);
+
+    int nrLinhasString = 0;
+
+    char linhasString[2048];
+    linhasString[0]=0;
+
+    while(nrLinhasString <= totalStrings){
+       int booleano=-1;
+
+       // falta passar nrLinahsString para formato string
+       sprintf(linhasString,"%d",nrLinhasString);
+
+       getExisteLinha(fdArtigos, linhasString, &booleano);
+
+       DEBUG_MACRO("nrLinhasString %d \n", nrLinhasString);
+
+       if (booleano == 1){
+        nLido = nLido+1;
+       }
+       lseek(fdArtigos,0,SEEK_SET);
+
+       nrLinhasString++;
+    }
+
+    // passar para a media o nLidos
+    total = nLido;
+    close(fdArtigos);
+
+    DEBUG_MACRO("Total %d\n",total);
+
+    return total;
+}
+
+/*
+Conta número total de strings, e escreve-os no ficheiro nTotalStrings
+*/
+int totalStrings(){
+    int nbytes, totalStrings = 0;
+    char buffer[2048];
+    buffer[0]=0;
+    int fdStr = myopen("strings", O_RDONLY);
+
+    while((nbytes=readline(fdStr,buffer,1)) > 0) {
+      DEBUG_MACRO("Buffer %s\n", buffer);
+      totalStrings++;
+    }
+
+  close(fdStr);
+  return totalStrings;
+}
+
+/*
+ Função que calcula a percentagem de strings que estão a ser usadas.
+*/
+void fazMedia(){
+  int totalStr;
+  int strUsadas;
+  int media, status;
+
+  totalStr = totalStrings();
+
+  strUsadas = stringsUsadas(totalStr);
+
+  DEBUG_MACRO("totalStrings  %d e strRealUsadas %d\n", totalStr, strUsadas);
+
+  media = ((strUsadas * 100) / totalStr);
+
+  int pid = fork();
+
+  if (pid == 0) {
+    DEBUG_MACRO("media: %d\n",media );
+    if(COMPACTA || media <= 80)
+        execlp("./compstr","./compstr",NULL);
+  }
+  else {
+    wait(&status);
+    removeCompactado();
+  }
+}
 
 /*
 Função que altera o valor do preço no ficheiro precosAlterados.
@@ -394,7 +483,7 @@ void comandosMA(char *buffer) {
     }
     else {
       insereArtigo(preco_nome, nome_codigo);
-      //fazMedia();
+      fazMedia();
       enviaSinalSv();
     }
   }
@@ -405,7 +494,7 @@ void comandosMA(char *buffer) {
     }
     else {
       alteraNome(nome_codigo, preco_nome);
-      //fazMedia();
+      fazMedia();
     }
   }
 

@@ -22,6 +22,8 @@ typedef struct artigoVisitado {
 
 #define CACHE 1
 
+#define COMPACTA 0
+
 #define tamCache  100
 
 /*
@@ -65,4 +67,7 @@ void removePipeEspecifico();
 
 int existeCodigo(int fd, int codigo, int tamformato);
 
+void getExisteLinha (int fdArtigos, char *nrLinhaStringS, int *booleano);
+
+void removeCompactado();
 #endif

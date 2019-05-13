@@ -270,3 +270,54 @@ int existeCodigo(int fd, int codigoInt, int tamformato) {
 
   return resultado;
 }
+
+/*
+ verificar se esse nr da linha existe no artigos.txt,
+ caso encontre, devolve 1, sse não encontrar devolve 0 para booleano
+
+*/
+void getExisteLinha (int fdArtigos, char *nrLinhaStringS, int *booleano) {
+
+  int byte;
+  char buffer[2048];
+  buffer[0] = 0;
+  int byteslidos=0;
+  *booleano = -1;
+
+  if ((byte = lseek (fdArtigos, 0, SEEK_SET)) < 0) {
+    perror("Erro ao fazer lseek na função contaLinhasArtigos.");
+    close(fdArtigos);
+   _exit(errno);
+  }
+
+  while ((byteslidos = readline(fdArtigos, buffer, tamArtigo)) > 0) {
+
+
+    int cmp = -1;
+   	int conta = 0;
+  	char* array[2];
+  	array[0]=0;
+  	array[1]=0;
+
+  	const char s[2] =" ";
+  	char* token;
+
+  	token= strtok(buffer,s);
+
+  	while(token != NULL){
+  		array[conta] = token;
+  		conta++;
+  		token = strtok(NULL,s);
+  	}
+
+  	if ((cmp = strcmp(array[0], nrLinhaStringS)==0)){
+
+  			*booleano = cmp;
+
+  	}
+ }
+}
+
+void removeCompactado() {
+  remove("compactado");
+}

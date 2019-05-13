@@ -8,54 +8,7 @@
 #include "aux.h"
 
 /*
- verificar se esse nr da linha existe no artigos.txt,
- caso encontre, devolve 1, sse não encontrar devolve 0 para booleano
-
-*/
-void getExisteLinha (int fdArtigos, char *nrLinhaStringS, int *booleano) {
-
-  int byte;
-  char buffer[2048];
-  buffer[0] = 0;
-  int byteslidos=0;
-  *booleano = -1;
-   
-  if ((byte = lseek (fdArtigos, 0, SEEK_SET)) < 0) {
-    perror("Erro ao fazer lseek na função contaLinhasArtigos.");
-    close(fdArtigos);
-   _exit(errno);
-  }
-
-  while ((byteslidos = readline(fdArtigos, buffer, tamArtigo)) > 0) {
-     
-
-    int cmp = -1;  
-   	int conta = 0;
-  	char* array[2];
-  	array[0]=0;
-  	array[1]=0;
-
-  	const char s[2] =" ";
-  	char* token;
-
-  	token= strtok(buffer,s);
-  
-  	while(token != NULL){
-  		array[conta] = token;
-  		conta++;
-  		token = strtok(NULL,s);
-  	}
-
-  	if ((cmp = strcmp(array[0], nrLinhaStringS)==0)){
-  			
-  			*booleano = cmp;
-  				
-  	}  	
- } 
-}
-
-/*
-	funcao que vai ao ficheiro artigos e substituir todos os numeros antigos(nrLinhaStrings) 
+	funcao que vai ao ficheiro artigos e substituir todos os numeros antigos(nrLinhaStrings)
 	pela posicao nova(novoNumeroLinhaCompactar)
 */
 void alteraNrArtigo(int fdArtigos, char* novoNumeroLinhaCompactarS, char* nrLinhaStrings){
@@ -83,22 +36,22 @@ void alteraNrArtigo(int fdArtigos, char* novoNumeroLinhaCompactarS, char* nrLinh
   		char* array[2];
   		array[0]=0;
   		array[1]=0;
-  			
+
   		const char s[2] =" ";
   		char* token;
 
   		token= strtok(buffer,s);
-  
+
   		while(token != NULL){
   			array[conta] = token;
   			conta++;
   			token = strtok(NULL,s);
   		}
-		
+
 		linhaNoArtigos= linhaNoArtigos+1;
 
 		if((compara= strcmp(array[0], nrLinhaStrings))==0){
-		
+
 			sscanf(novoNumeroLinhaCompactarS,"%d",&novoNumeroLinhaCompactar);
 			sscanf(array[1],"%lf",&precoArtigo);
 
@@ -130,7 +83,7 @@ void toStringTxt(int fdStrings, int fdCompactar){
 void compactar(int fdArtigos, int fdStrings, int fdCompactar){
 
 	int booleano=-1;
-	
+
 	//
 	int nbytes;
 
@@ -142,7 +95,7 @@ void compactar(int fdArtigos, int fdStrings, int fdCompactar){
 	char nrLinhaStringS[2048];
 	nrLinhaStringS[0]=0;
 
-	//inicializar o numero da linha que estamos a ler do ficheiro string.txt 
+	//inicializar o numero da linha que estamos a ler do ficheiro string.txt
 	int nrLinhaString=0;
 
 	int novoNumeroLinhaCompactar=0;
@@ -155,15 +108,15 @@ void compactar(int fdArtigos, int fdStrings, int fdCompactar){
     	close(fdArtigos);
    		_exit(errno);
   	}
-		
+
 		//ler linhas do Strings
 	while( (nbytes =readline(fdStrings, buffer,1))>0){
-				
+
 
 		buffer[nbytes-1] = '\n';
 		buffer[nbytes] = 0;
 
-		// nr da linha do artigo no ficheiro strings.txt; 
+		// nr da linha do artigo no ficheiro strings.txt;
 		nrLinhaString= nrLinhaString+1;
 
 		sprintf(nrLinhaStringS,"%d",nrLinhaString);
@@ -179,30 +132,30 @@ void compactar(int fdArtigos, int fdStrings, int fdCompactar){
 			mywrite(fdCompactar,buffer,tambuffer);
 			//numero da linha no compactar onde foi escrito
 			novoNumeroLinhaCompactar++;
-		
+
 
 		sprintf(novoNumeroLinhaCompactarS,"%d",novoNumeroLinhaCompactar);
 
-		// alterar o numero da linha para qual esá a apontar o artigo 
+		// alterar o numero da linha para qual esá a apontar o artigo
 		//no ficheiro artigo
 
 		alteraNrArtigo(fdArtigos,novoNumeroLinhaCompactarS, nrLinhaStringS);
 
 		}
 	}
-	
+
 	//copiar tudo do ficheiro compactar para o ficheiro String (O_TRUNC)
 	close(fdStrings);
-	close(fdCompactar);	
-	
+	close(fdCompactar);
+
 	fdStrings=myopen("strings", O_WRONLY | O_TRUNC);
 	fdCompactar=myopen("compactado",O_RDONLY);
-	
+
 	toStringTxt(fdStrings,fdCompactar);
 
 close(fdArtigos);
 close(fdStrings);
-close(fdCompactar);	
+close(fdCompactar);
 }
 
 
@@ -211,8 +164,8 @@ int main(){
 	int fdArtigos = myopen("artigos", O_RDWR);
 	int fdStrings = myopen("strings", O_RDWR);
 	int fdCompactar = myopen("compactado",O_CREAT | O_RDWR | O_APPEND);
-	
+
 	compactar(fdArtigos,fdStrings, fdCompactar);
-	
+
 return 0;
 }

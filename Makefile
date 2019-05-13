@@ -1,7 +1,7 @@
 CC = gcc
 CFLAGS = -W -Wall -g
 
-all: ma sv cv ag agf gerar-artigos gerar-op-artigos gerar-op-vendas
+all: ma sv cv ag agf gerar-artigos gerar-op-artigos gerar-op-vendas compstr
 
 ma: debug aux ma.c
 	$(CC) $(CFLAGS) ma.c aux.o debug.o -o ma
@@ -17,6 +17,9 @@ ag: debug aux ag.c
 
 agf: debug aux agf.c
 	$(CC) $(CFLAGS) agf.c aux.o debug.o -o agf
+
+compstr: debug aux compstr.c
+	$(CC) $(CFLAGS) compstr.c aux.o debug.o -o compstr
 
 gerar-artigos: gerar-dados gerar-artigos.c 
 	$(CC) $(CFLAGS) gerar-artigos.c gerar-dados.o -o gerar-artigos
@@ -37,7 +40,7 @@ aux: debug aux
 	$(CC) $(CFLAGS) -c aux.c
 
 clean:
-	rm -f *.o ma sv cv ag agf gerar-artigos gerar-op-artigos
+	rm -f *.o ma sv cv ag agf compstr gerar-artigos gerar-op-artigos
 
 clean-all-data:
 	rm -f vendas artigos strings stocks log_* > /dev/null 2>&1 
