@@ -16,8 +16,6 @@
 +*/
 int stringsUsadas(int totalStrings){
 
-    char buffer[2048];
-    buffer[0]=0;
     int nLido = 0, total;
 
     int fdArtigos= myopen("artigos", O_RDONLY);
