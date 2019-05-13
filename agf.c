@@ -60,7 +60,7 @@ int contaLinhas(char *codigo, int *flag, int fdAgregador) {
     return linha;
   }
 
-  while ((byteslidos = readline(fdAgregador, buffer, 1)) > 0) {
+  while ((byteslidos = readline(fdAgregador, buffer, tamVendas)) > 0) {
         linha++;
         sscanf(buffer, "%s %s %s", codigoBuffer, quantidadeBuffer, precoBuffer);
         if(((*flag) = strcmp(codigo, codigoBuffer)) == 0) {
@@ -101,7 +101,7 @@ void agregaVenda(char *buffer, int linha, int fdAgregador){
 
   if(codigoV >= 1 && quantidadeV > 0 && precoV > 0.00) {
 
-      readline(fdAgregador, buffer, 1);
+      readline(fdAgregador, buffer, tamVendas);
 
       sscanf(buffer, "%d %d %f", &codigoA, &quantidadeA, &precoA);
 
@@ -199,12 +199,12 @@ void escreveStdout(int fdAgregador){
     _exit(errno);
   }
 
-  while ((byteslidos = readline(fdAgregador, buffer, 1)) > 0)
+  while ((byteslidos = readline(fdAgregador, buffer, tamVendas)) > 0) {
+      buffer[byteslidos - 1] = '\n';
+      buffer[byteslidos] = '\0';
       mywrite(STDOUT_FILENO, buffer, byteslidos);
-
+  }
 }
-
-
 
 //main
 int main() {

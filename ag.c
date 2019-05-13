@@ -59,7 +59,7 @@ dados agregarVendas(dados info, int *tam) {
   float montante;
 
   //TODO: ler mais do que 1 byte
-  while ((byteslidos = readline(0, buffer, 1)) > 0) {
+  while ((byteslidos = readline(STDIN_FILENO, buffer, 1)) > 0) {
 
       sscanf(buffer, "%d %d %f", &cod, &quant, &montante);
       if(cod >= *tam) {
