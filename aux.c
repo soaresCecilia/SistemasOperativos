@@ -107,8 +107,8 @@ int readline(int fildes, char *buf, int nbytes) {
 
     while((byteslidos = myread(fildes, buf, nbytes)) > 0) {
       total += byteslidos; //vai contando o total de bytes que lê
-      if(*buf == '\n') {
-        *buf = 0;
+      if(buf[byteslidos - 1] == '\n') {
+        buf[byteslidos - 1] = 0;
         break; // se o char que está naquela posição do buffer for newline
       }
       buf = buf + byteslidos; //aumenta a posição no buffer onde o caracter vai ser armazenado
@@ -163,7 +163,7 @@ int getQuantidade(char *codigo) {
   }
 
 
-  bytesLidos = readline(fdStocks, buffer, 1);
+  bytesLidos = readline(fdStocks, buffer, tamStocks);
     if(bytesLidos < 0) {
       perror("Erro ao ler dos stocks");
       close(fdStocks);
@@ -271,6 +271,6 @@ int existeCodigo(int fd, int codigoInt, int tamformato) {
   if (nbytes < bytesfim) {
     resultado = 1;
   }
-  
+
   return resultado;
 }

@@ -239,7 +239,7 @@ void getStock_Preco(char *codigo, int fdCliente, visitado artigosVisitados[]) {
 		DEBUG_MACRO("Encontrado produto %d na cache.\n", codigoInt);
   }
   else if(existeCodigo(fdArt, codigoInt, tamArtigo)) {
-  	if ((bytesLidos = readline(fdArt, buffer, 1)) >= 0) { //ver depois para ler mais bytes
+  	if ((bytesLidos = readline(fdArt, buffer, tamArtigo)) >= 0) { //ver depois para ler mais bytes
   	  buffer[bytesLidos] = 0;
   	  sscanf(buffer, "%d %f", &cdg, &preco);
 		  DEBUG_MACRO("O buffer tem %s\n", buffer);
@@ -295,7 +295,7 @@ void actualizaStock(char* codigo, char* quantidade){
 	}
 
 	else { //artigo existe em stock
-		if ((bytesLidos = readline(fdStocks, buffer, 1)) < 0) {
+		if ((bytesLidos = readline(fdStocks, buffer, tamStocks)) < 0) {
 			perror("Erro ao ler do ficheiro stocks na função actualizaStock.");
 		}
 		sscanf(buffer,"%s %s", codigoArt, quantidadeArt);
@@ -389,7 +389,7 @@ void insereVenda(char *codigo, char *quantidade){
 		return;
 	}
 
-	if (readline(fdArtigos, buff, 1) < 0) {
+	if (readline(fdArtigos, buff, tamArtigo) < 0) {
 		perror("Erro a ler do ficheiro artigos na função insereVenda.");
 		close(fdArtigos);
 		close(fdVendas);
@@ -555,7 +555,7 @@ int mandaAgregar(int nBytesLidosAGIni){
 
 
 	          //escrever para o pipe
-	          while((byteslidos=readline(fdVendas,bufferino,1))>0){
+	          while((byteslidos=readline(fdVendas,bufferino,tamVendas))>0){
 
 	            bufferino[byteslidos-1]='\n';
 	            bufferino[byteslidos]='\0';
@@ -596,7 +596,8 @@ void agrega(){
         else{
 
           lseek(fdPosAgr,0,SEEK_SET);//coloca a ler desde o inicio o ficheiro poAgr
-          readline(fdPosAgr,posicaoSN,1);
+
+					readline(fdPosAgr,posicaoSN,1);
 
           sscanf(posicaoSN,"%d",&posicaoN);
 

@@ -207,8 +207,7 @@ void alteraNome(char *codigo, char *novoNome) {
     return;
   }
 
-  // TODO: RESOLVER SÓ LÊ 1 BYTE DE CADA VEZ, se ler tamArtigo dá erro
-  readline(fdArt, buffer, 1);
+  readline(fdArt, buffer, tamArtigo);
 
   DEBUG_MACRO("Leu dos artigos Buffer %s\n", buffer);
 
@@ -284,8 +283,7 @@ void alteraPreco(char *codigo, char *novoPreco){
 
       DEBUG_MACRO("Quantos bytes leu para achar a linha do artigo %d\n", nbytes);
 
-      // TODO: RESOLVER SÓ LÊ 1 BYTE DE CADA VEZ, se ler tamArtigo dá erro
-      if (readline(fdArt, buffer, 1) < 0) {
+      if (readline(fdArt, buffer, tamArtigo) < 0) {
         perror("Erro ao ler do ficheiro artigos na função alteraPreco.");
         close(fdArt);
         return;
