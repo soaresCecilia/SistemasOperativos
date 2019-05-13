@@ -97,10 +97,6 @@ int mywrite(int fildes, void *buffer, int total_bytes) {
 /*
 Função que lê uma linha do ficheiro, nbytes de cada vez, devolvendo o número
 total de bytes lidos.
-
-TODO: se total for maior do que o buffer tem de fazer realloc do buffer. Tb ter
-em atenção que o buffer pode não aguentar uma linha completa.
-
 */
 int readline(int fildes, char *buf, int nbytes) {
     int byteslidos, total = 0;

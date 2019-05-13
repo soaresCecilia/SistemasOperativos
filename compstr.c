@@ -26,7 +26,7 @@ void getExisteLinha (int fdArtigos, char *nrLinhaStringS, int *booleano) {
    _exit(errno);
   }
 
-  while ((byteslidos = readline(fdArtigos, buffer, 1)) > 0) {
+  while ((byteslidos = readline(fdArtigos, buffer, tamArtigo)) > 0) {
      
 
     int cmp = -1;  
@@ -75,7 +75,7 @@ void alteraNrArtigo(int fdArtigos, char* novoNumeroLinhaCompactarS, char* nrLinh
    		_exit(errno);
   	}
 
-	while ((byteslidos = readline(fdArtigos, buffer, 1)) > 0) {
+	while ((byteslidos = readline(fdArtigos, buffer, tamArtigo)) > 0) {
 
        	double precoArtigo=0;
        	char bufferArtigos[2048];

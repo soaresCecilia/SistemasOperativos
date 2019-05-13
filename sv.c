@@ -382,7 +382,6 @@ void insereVenda(char *codigo, char *quantidade){
 	 return;
 	}
 
-  // TODO: VERIFICAR EM AMBOS ARTIGO E STOCK
 	if (!existeCodigo(fdArtigos, codigoInt, tamArtigo)) {
 		close(fdArtigos);
 		close(fdVendas);
@@ -555,7 +554,7 @@ int mandaAgregar(int nBytesLidosAGIni){
 
 
 	          //escrever para o pipe
-	          while((byteslidos=readline(fdVendas,bufferino,tamVendas))>0){
+	          while((byteslidos=readline(fdVendas, bufferino, tamVendas))>0){
 
 	            bufferino[byteslidos-1]='\n';
 	            bufferino[byteslidos]='\0';
@@ -820,7 +819,6 @@ void servidor(int fdComum) {
 
   inicializaArray(artigosVisitados);
 
-  // TODO: ler mais do que um byte de cada vez
   while((byteslidos = myreadServidor(fdComum, buffer, 1)) > 0) {
 
     	for(i = 0; buffer[i] != '@'; i++){
@@ -841,7 +839,6 @@ void servidor(int fdComum) {
 	    }
 
 	    if(comandos[0] != 'a') {
-			    	//TODO: manter uma estrutura de dados para saber se o ficheiro está aberto
 			    	if ((fdCliente = myopen(processo, O_WRONLY)) < 0) {
 			      	perror("Erro ao abrir o pipe cliente especifico.");
 			      	_exit(errno);

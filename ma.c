@@ -416,7 +416,7 @@ void comandosMA(char *buffer) {
       else alteraPreco(nome_codigo, preco_nome);
   }
 
-  if(strcmp(letra, "a") == 0){ //TODO: Aqui tb tem de se ter em atenção que o tamanho do preço não pode exceder
+  if(strcmp(letra, "a") == 0){
       int fdPipeComum = myopen("pipeComum", O_WRONLY);
       ma(fdPipeComum);
 

@@ -33,9 +33,9 @@ Macro para permitir blindar os ficheiros eficientemente quando são criados.
 #define tamPreco       12
 #define tamCodigo      7
 
-#define formatoArtigo "%7d %12.2f\n"
+#define formatoArtigo "%7d %12.2lf\n"
 #define formatoStocks "%7d %7d\n"
-#define formatoVendas "%7d %7d %12.2f\n"
+#define formatoVendas "%7d %7d %12.2lf\n"
 
 #define tamArtigo (tamCodigo + tamPreco + 2)
 #define tamStocks (tamCodigo + tamQuantidade + 2)

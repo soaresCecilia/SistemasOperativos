@@ -47,8 +47,7 @@ void cliente(int fdComum, int fdEspecifico){
 
   int pid = getpid();
 
-  //lê do stdin para o buffer enqto não for EOF  TODO:PIPE_BUF
-  while(byteslidos > 0) {   //TODO: ler mais do que um byte
+  while(byteslidos > 0) {
 
     if ((byteslidos = readline(STDIN_FILENO, buffer, 1)) <= 0)
       break;
