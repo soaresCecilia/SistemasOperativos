@@ -9,7 +9,20 @@ typedef struct agrega{
 } * dados;
 
 
+typedef struct artigoVisitado {
+
+	int codArtigo;
+	int vezesVisitado;
+	float precoArtigo;
+
+} * visitado;
+
+
 #define TRUE  1
+
+#define CACHE 1
+
+#define tamCache  100
 
 /*
 Macro para permitir blindar os ficheiros eficientemente quando são criados.

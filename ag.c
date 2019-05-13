@@ -9,6 +9,7 @@
 #include "debug.h"
 
 
+
 /*
 Função que aloca memória necessária para estutura de dados com o tamanho
 tam e inicializa essa mesma estutura com todas as suas posições a zero.

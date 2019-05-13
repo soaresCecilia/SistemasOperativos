@@ -2,6 +2,7 @@
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <math.h>
 #include <errno.h>
 #include <string.h>
 #include <sys/wait.h>
@@ -10,6 +11,27 @@
 #include "debug.h"
 #include "aux.h"
 
+
+/*
+Função que altera o valor do preço no ficheiro precosAlterados.
+*/
+int alteraPrecoCache(int codigoProduto, float preco) {
+
+  char buffer[2048];
+  int bytesescritos = 0;
+  buffer[0] = 0;
+
+  int fd = myopen("precosAlterados", O_CREAT | O_WRONLY | O_TRUNC);
+
+  sprintf(buffer, "%d %f", codigoProduto, preco);
+
+  bytesescritos = mywrite(fd, buffer, sizeof(codigoProduto) + sizeof(preco) + 1);
+
+  close(fd);
+
+  return bytesescritos;
+
+}
 
 
 /*
@@ -276,6 +298,8 @@ void alteraPreco(char *codigo, char *novoPreco){
 
       sprintf(buffer, formatoArtigo, linha, preco);
 
+      alteraPrecoCache(codigoInt, preco);
+
       DEBUG_MACRO("Buffer %s\n", buffer);
 
 
@@ -326,8 +350,9 @@ void enviaSinalSv(){
   }
 }
 
-// passar o comando a (agregar) para o pipe comum
-
+/*
+Função que passa o comando a (agregar) para o pipe comum
+*/
 void ma(int fdPipeComum){
 
   int pid = getpid();
@@ -345,17 +370,64 @@ void ma(int fdPipeComum){
 
 
 
-//main
-int main() {
-  int byteslidos = 1;
-  char buffer[2048];
-  buffer[0] = 0;
+/*
+Função que manda executar os respetivos comandos do programa de manutenção
+de artigos.
+*/
+void comandosMA(char *buffer) {
   char letra[2];
   letra[0] = 0;
   char nome_codigo[1000];
   nome_codigo[0] = 0;
   char preco_nome[500];
   preco_nome[0] = 0;
+
+
+  sscanf(buffer, "%s %s %s", letra, nome_codigo, preco_nome);
+
+  if(strcmp(letra, "i") == 0) {
+    if(strlen(preco_nome) > tamPreco) {
+    }
+    else {
+      insereArtigo(preco_nome, nome_codigo);
+      //fazMedia();
+      enviaSinalSv();
+    }
+  }
+
+  if(strcmp(letra, "n") == 0) {
+    if(strlen(nome_codigo) > tamCodigo) {
+      DEBUG_MACRO("Código num formato maior do que o permitido: %s.\n", nome_codigo);
+    }
+    else {
+      alteraNome(nome_codigo, preco_nome);
+      //fazMedia();
+    }
+  }
+
+  if(strcmp(letra, "p") == 0){
+      if(strlen(preco_nome) > tamPreco || strlen(nome_codigo) > tamCodigo) {
+        DEBUG_MACRO("Produto com código: %s com preço num formato superior ao permitido: %s.\n", nome_codigo, preco_nome);
+      }
+      else alteraPreco(nome_codigo, preco_nome);
+  }
+
+  if(strcmp(letra, "a") == 0){ //TODO: Aqui tb tem de se ter em atenção que o tamanho do preço não pode exceder
+      int fdPipeComum = myopen("pipeComum", O_WRONLY);
+      ma(fdPipeComum);
+
+  }
+
+}
+
+
+
+//main
+int main() {
+  int byteslidos = 1;
+  char buffer[2048];
+  buffer[0] = 0;
+
 
   const char *files[3] = {"strings", "artigos", "stocks"};
 
@@ -365,49 +437,19 @@ int main() {
 
 
   DEBUG_MACRO("Comecar a ler do stdin");
-  while(byteslidos > 0) {   //TODO: ler mais do que um byte
+  while(byteslidos > 0) {
 
-    //TODO: mais do que 1 byte
     if ((byteslidos = readline(STDIN_FILENO, buffer, 1)) <= 0)
       break;
 
     buffer[byteslidos - 1] = '\n';
     buffer[byteslidos] = 0;
 
-    sscanf(buffer, "%s %s %s", letra, nome_codigo, preco_nome);
-
-    if(strcmp(letra, "i") == 0) {
-      if(strlen(preco_nome) > tamPreco) {
-      }
-      else {
-        insereArtigo(preco_nome, nome_codigo);
-        enviaSinalSv();
-      }
-    }
-
-    if(strcmp(letra, "n") == 0) {
-      if(strlen(nome_codigo) > tamCodigo) {
-        DEBUG_MACRO("Código num formato maior do que o permitido: %s.\n", nome_codigo);
-      }
-      else alteraNome(nome_codigo, preco_nome);
-    }
-
-    if(strcmp(letra, "p") == 0){
-        if(strlen(preco_nome) > tamPreco || strlen(nome_codigo) > tamCodigo) {
-          DEBUG_MACRO("Produto com código: %s com preço num formato superior ao permitido: %s.\n", nome_codigo, preco_nome);
-        }
-        else alteraPreco(nome_codigo, preco_nome);
-    }
-
-    if(strcmp(letra, "a") == 0){ //Aqui tb tem de se ter em atenção que o tamanho do preço não pode exceder
-
-
-        int fdPipeComum = myopen("pipeComum", O_WRONLY);
-        //passar o comando a para o pipe comum
-        ma(fdPipeComum);
-
-    }
+    comandosMA(buffer);
   }
+
+  removePipeEspecifico();
+
 
   fechar_log();
 

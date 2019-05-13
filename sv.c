@@ -16,6 +16,130 @@
 
 #define AGREGAR_FICHEIRO 0
 
+
+static int posicaoLivre = 0;
+
+
+
+/*
+Função que inicializa a estrutura artigoVisitado.
+*/
+visitado inicializaVisitado(int cod, float precoArt) {
+
+  visitado novo = malloc(sizeof(struct artigoVisitado));
+
+  novo->codArtigo = cod;
+  novo->precoArtigo = precoArt;
+  novo->vezesVisitado = 0;
+
+  return novo;
+
+}
+
+/*
+Função que inicializa o array do tipo visitado com as suas posições a NULL.
+*/
+void inicializaArray(visitado artigosVisitados[]) {
+
+  int i;
+
+  for(i = 0; i < tamCache; i++) {
+
+    artigosVisitados[i] = NULL;
+  }
+}
+
+/*
+Função que atualiza os artigos inseridos na cache, sendo que se o artigo não
+existe na cache este é inserido no final da cache e todos os demais artigos
+inseridos na cache são inseridos no índice anterior do array.
+*/
+void atualizaMaisVisitados(int codigoArtigo, int flag, float preco, visitado artigosVisitados[]) {
+
+  int i;
+  int encontrado = 0;
+
+  if(flag == 1) {
+
+    for(i = 0; i < tamCache && encontrado == 0; i++) {
+
+      if(codigoArtigo == artigosVisitados[i]->codArtigo) {
+        artigosVisitados[i]->vezesVisitado += 1;
+        DEBUG_MACRO("Vezes visitado = %d\n", artigosVisitados[i]->vezesVisitado);
+        encontrado = 1;
+      }
+
+    }
+
+  }
+
+  else {
+
+    if(posicaoLivre == tamCache) {
+
+      visitado novoArtigo = malloc(sizeof(struct artigoVisitado));//inicializaVisitado();
+
+      (*novoArtigo).precoArtigo = preco;
+      (*novoArtigo).vezesVisitado = 1;
+      (*novoArtigo).codArtigo = codigoArtigo;
+
+      free(artigosVisitados[0]);
+      for(i = 1; i < tamCache; i++)
+        artigosVisitados[i-1] = artigosVisitados[i];
+
+      artigosVisitados[tamCache-1] = novoArtigo;
+
+    }
+
+    else {
+
+      visitado novoArtigo = malloc(sizeof(struct artigoVisitado));//inicializaVisitado();
+
+      (*novoArtigo).precoArtigo = preco;
+      (*novoArtigo).vezesVisitado = 1;
+      (*novoArtigo).codArtigo = codigoArtigo;
+
+      artigosVisitados[posicaoLivre] = novoArtigo;
+      posicaoLivre += 1;
+
+    }
+
+  }
+
+}
+
+
+/*
+Função que verifica se o produto já existe na cache. A função devolve o índice do
+array onde o artigo se encontra, caso contário devolve -1.
+*/
+int existeProdutoMaisVisitado(int codigoArtigo, visitado artigosVisitados[]) {
+
+  int i, final = -1;
+  int encontrado = 0;
+
+  DEBUG_MACRO("Posicao livre %d\n", posicaoLivre);
+
+  if(posicaoLivre == 0)
+    return -1;
+
+  for(i = 0; i < tamCache && encontrado == 0 && artigosVisitados[i] != NULL; i++) {
+
+    DEBUG_MACRO("Codigo do artigo é: %d\n", artigosVisitados[i]->codArtigo);
+
+    if(codigoArtigo == artigosVisitados[i]->codArtigo) {
+
+      final = i;
+
+      encontrado = 1;
+
+    }
+  }
+  return final;
+}
+
+
+
 /*
 Função que escreve no pipe de um determinado cliente.
 */
@@ -83,12 +207,13 @@ void insereStock(char*codigo, char*quantidade){
 Função que escreve no pipe especifico do cliente a quantidade
 e o preço do artigo cujo código passado é como parâmetro.
 */
-void getStock_Preco(char *codigo, int fdCliente) {
+void getStock_Preco(char *codigo, int fdCliente, visitado artigosVisitados[]) {
   int codigoInt, fdArt;
   int bytesLidos, cdg;
   float preco = 0.00;
   char buffer[1024];
   buffer[0] = 0;
+	int existeArray = -1;
 
   int quantidade = getQuantidade(codigo);
 
@@ -103,12 +228,23 @@ void getStock_Preco(char *codigo, int fdCliente) {
     perror("Erro ao abrir o ficheiro artigos na função getStock_Preco.");
 	}
 
-  if(existeCodigo(fdArt, codigoInt, tamArtigo)) {
+	if(CACHE)
+    existeArray = existeProdutoMaisVisitado(codigoInt, artigosVisitados);
+
+	DEBUG_MACRO("EXISTE ARRAY: %d\n", existeArray);
+
+  if(existeArray >= 0) {
+    preco = (*artigosVisitados[existeArray]).precoArtigo;
+    atualizaMaisVisitados(codigoInt, 1, preco, artigosVisitados);
+		DEBUG_MACRO("Encontrado produto %d na cache.\n", codigoInt);
+  }
+  else if(existeCodigo(fdArt, codigoInt, tamArtigo)) {
   	if ((bytesLidos = readline(fdArt, buffer, 1)) >= 0) { //ver depois para ler mais bytes
   	  buffer[bytesLidos] = 0;
   	  sscanf(buffer, "%d %f", &cdg, &preco);
 		  DEBUG_MACRO("O buffer tem %s\n", buffer);
 		  DEBUG_MACRO("O codigo é %d e o preco é %f\n", cdg, preco);
+			atualizaMaisVisitados(codigoInt, 0, preco, artigosVisitados);
 		}
 	}
 
@@ -432,7 +568,6 @@ int mandaAgregar(int nBytesLidosAGIni){
 	    }
 
 			return posicao;
-
 }
 
 void agrega(){
@@ -447,10 +582,10 @@ void agrega(){
 
             posicaoI = mandaAgregar(0);
 
-            int qtos = sprintf(posicaoSI,"%d\n",posicaoI);
+            sprintf(posicaoSI,"%d\n",posicaoI);
 
             int qtos2= strlen(posicaoSI);
-            int nbw=mywrite(fdPosAgr,posicaoSI, qtos2);
+            mywrite(fdPosAgr,posicaoSI, qtos2);
 
             close(fdPosAgr);
         }
@@ -461,7 +596,7 @@ void agrega(){
         else{
 
           lseek(fdPosAgr,0,SEEK_SET);//coloca a ler desde o inicio o ficheiro poAgr
-          int nbr=readline(fdPosAgr,posicaoSN,1);
+          readline(fdPosAgr,posicaoSN,1);
 
           sscanf(posicaoSN,"%d",&posicaoN);
 
@@ -524,13 +659,57 @@ int divideComandos(char *comandos, char *codig_agr, char *quant) {
 }
 
 
+void verificaAlteracaoCache(visitado artigosVisitados[]) {
+
+  int fd = open("precosAlterados", O_RDONLY);
+  int linha;
+  float precoAntigo;
+  int existe;
+
+  char buffer[2048];
+
+  size_t byteslidos = read(fd, buffer, sizeof(int) + sizeof(float) + 1);
+
+  if(fd < 0)
+    return;
+
+  if(byteslidos == 0) {
+
+    close(fd);
+
+    return;
+  }
+  else {
+
+    readline(fd, buffer, 1);
+
+    sscanf(buffer, "%d %f", &linha, &precoAntigo);
+
+    existe = existeProdutoMaisVisitado(linha, artigosVisitados);
+
+    if(existe >= 0) {
+
+      (*artigosVisitados[existe]).precoArtigo = precoAntigo;
+
+    }
+
+    close(fd);
+
+    fd = open("precosAlterados", O_TRUNC);
+    close(fd);
+  }
+
+}
+
+
+
 /*
 Função que executa os comandos necessários para atualizar o stock e
 mostrá-lo no stdout ou apenas mostrar no stdout stock e preço, consoante
 sejam passados no stdin, respetivamente, o código do artigo e a quantidade
 (a inserir em stock ou a vender) ou somente o código do artigo.
 */
-void processaComandos(char buffer[], char *comandos, int fdCliente) {
+void processaComandos(char buffer[], char *comandos, int fdCliente, visitado artigosVisitados[]) {
   int conta, stock, qtos, sinal = 1;
   char codigoArt[700];
   codigoArt[0] = 0;
@@ -571,8 +750,9 @@ void processaComandos(char buffer[], char *comandos, int fdCliente) {
   			}
 
   		else{
-   				getStock_Preco(codigoArt, fdCliente);
-   				DEBUG_MACRO("estou aqui\n");
+				verificaAlteracaoCache(artigosVisitados);
+				getStock_Preco(codigoArt, fdCliente, artigosVisitados);
+   			DEBUG_MACRO("estou aqui\n");
    			}
 	}
 }
@@ -635,6 +815,10 @@ void servidor(int fdComum) {
   comandos[0] = 0;
   int byteslidos, i, j, fdCliente;
 
+	visitado artigosVisitados[tamCache];
+
+  inicializaArray(artigosVisitados);
+
   // TODO: ler mais do que um byte de cada vez
   while((byteslidos = myreadServidor(fdComum, buffer, 1)) > 0) {
 
@@ -663,7 +847,7 @@ void servidor(int fdComum) {
 			    	}
     	}
 
-			processaComandos(buffer, comandos, fdCliente);
+			processaComandos(buffer, comandos, fdCliente, artigosVisitados);
 	}
 }
 /*
@@ -746,5 +930,4 @@ int main() {
 	fechar_log();
 
   return 0;
-
 }
